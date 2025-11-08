@@ -31,17 +31,44 @@ interface TangentThreadProps {
   level?: number;
   onReply: (tangentId: string, content: string) => void;
   onCreateSubTangent?: (parentTangentId: string, highlightedText: string, content: string) => void;
+  initialCollapsed?: boolean;
 }
 
-export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent }: TangentThreadProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent, initialCollapsed = false }: TangentThreadProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [showTangentSelector, setShowTangentSelector] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
+  const [childrenCollapsedState, setChildrenCollapsedState] = useState<Record<string, boolean>>({});
   const tangentRef = useRef<HTMLDivElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
+
+  // Update collapsed state when initialCollapsed prop changes
+  useEffect(() => {
+    setIsCollapsed(initialCollapsed);
+  }, [initialCollapsed]);
+
+  const handleToggleCollapse = () => {
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
+    
+    // When collapsing, also collapse all children
+    if (newCollapsedState && tangent.sub_tangents) {
+      const allChildrenCollapsed: Record<string, boolean> = {};
+      const collapseRecursive = (tangents: Tangent[]) => {
+        tangents.forEach(t => {
+          allChildrenCollapsed[t.id] = true;
+          if (t.sub_tangents) {
+            collapseRecursive(t.sub_tangents);
+          }
+        });
+      };
+      collapseRecursive(tangent.sub_tangents);
+      setChildrenCollapsedState(allChildrenCollapsed);
+    }
+  };
 
   const shortenText = (text: string, maxLength: number = 50) => {
     if (text.length <= maxLength) return text;
@@ -135,7 +162,7 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
             variant="ghost"
             size="icon"
             className="h-6 w-6 flex-shrink-0"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={handleToggleCollapse}
           >
             {isCollapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -294,6 +321,7 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
                 level={level + 1}
                 onReply={onReply}
                 onCreateSubTangent={onCreateSubTangent}
+                initialCollapsed={childrenCollapsedState[subTangent.id] ?? false}
               />
             ))}
           </div>
