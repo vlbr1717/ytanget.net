@@ -30,7 +30,7 @@ interface ChatMessageProps {
   content: string;
   messageId?: string;
   tangents?: Tangent[];
-  onCreateTangent?: (messageId: string, highlightedText: string, content: string, parentTangentId?: string) => void;
+  onCreateTangent?: (messageId: string, highlightedText: string, content: string, parentTangentId?: string, isSubTangent?: boolean) => void;
 }
 
 export const ChatMessage = ({ 
@@ -154,7 +154,8 @@ export const ChatMessage = ({
   const handleCreateSubTangent = (parentTangentId: string, highlightedText: string, content: string) => {
     console.log('ChatMessage handleCreateSubTangent called:', { parentTangentId, highlightedText, content });
     if (messageId && onCreateTangent) {
-      onCreateTangent(messageId, highlightedText, content, parentTangentId);
+      // Pass true as 5th parameter to indicate this is a sub-tangent, not a reply
+      onCreateTangent(messageId, highlightedText, content, parentTangentId, true);
     }
   };
   
