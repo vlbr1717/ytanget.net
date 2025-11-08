@@ -81,46 +81,58 @@ const Index = () => {
   ) => {
     console.log('handleCreateTangent called:', { messageId, content, parentTangentId });
     
-    // Build AI context BEFORE updating state if this is a reply with content
+    // Build AI context BEFORE updating state if user provided content
     let shouldGenerateAiReply = false;
     let contextMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
     
-    if (content.trim() && parentTangentId) {
-      console.log('Checking if should generate AI reply...');
+    if (content.trim()) {
+      console.log('User provided content, will generate AI reply');
       const message = messages.find(m => m.id === messageId);
       if (message) {
-        // Build context from the tangent thread
-        const buildTangentContext = (tangents: Tangent[], targetId: string, path: Tangent[] = []): Tangent[] | null => {
-          for (const t of tangents) {
-            const currentPath = [...path, t];
-            if (t.id === targetId) return currentPath;
-            if (t.replies) {
-              const found = buildTangentContext(t.replies, targetId, currentPath);
-              if (found) return found;
+        shouldGenerateAiReply = true;
+        
+        if (parentTangentId) {
+          // This is a reply to an existing tangent - include thread context
+          console.log('Building context from tangent thread...');
+          const buildTangentContext = (tangents: Tangent[], targetId: string, path: Tangent[] = []): Tangent[] | null => {
+            for (const t of tangents) {
+              const currentPath = [...path, t];
+              if (t.id === targetId) return currentPath;
+              if (t.replies) {
+                const found = buildTangentContext(t.replies, targetId, currentPath);
+                if (found) return found;
+              }
             }
-          }
-          return null;
-        };
+            return null;
+          };
 
-        const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
-        console.log('Found tangent path:', tangentPath);
-        if (tangentPath) {
-          shouldGenerateAiReply = true;
-          console.log('Will generate AI reply!');
+          const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
+          console.log('Found tangent path:', tangentPath);
           
-          // Build conversation context
+          if (tangentPath) {
+            // Build conversation context with the full thread
+            contextMessages = [
+              { role: "assistant" as const, content: message.content },
+              { role: "user" as const, content: `Context: Original highlighted text: "${tangentPath[0].highlighted_text}"` }
+            ];
+
+            // Add all tangents in the thread as conversation
+            tangentPath.forEach(t => {
+              contextMessages.push({ role: "user" as const, content: t.content });
+            });
+
+            // Add the new user tangent
+            contextMessages.push({ role: "user" as const, content });
+          } else {
+            shouldGenerateAiReply = false;
+          }
+        } else {
+          // This is a new tangent - just use the highlighted text and user's tangent
+          console.log('New tangent on:', highlightedText);
           contextMessages = [
             { role: "assistant" as const, content: message.content },
-            { role: "user" as const, content: `Context: Original highlighted text: "${tangentPath[0].highlighted_text}"` }
+            { role: "user" as const, content: `Regarding this part of your message: "${highlightedText}"\n\n${content}` }
           ];
-
-          // Add all tangents in the thread as conversation
-          tangentPath.forEach(t => {
-            contextMessages.push({ role: "user" as const, content: t.content });
-          });
-
-          // Add the new user tangent
-          contextMessages.push({ role: "user" as const, content });
         }
       }
     }
