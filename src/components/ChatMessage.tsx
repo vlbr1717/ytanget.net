@@ -1,20 +1,89 @@
+import { useState, useRef } from "react";
 import { User, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { TangentThread } from "@/components/TangentThread";
+import { TangentSelector } from "@/components/TangentSelector";
+
+interface Tangent {
+  id: string;
+  highlighted_text: string;
+  content: string;
+  created_at: string;
+  replies?: Tangent[];
+}
 
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  messageId?: string;
+  tangents?: Tangent[];
+  onCreateTangent?: (messageId: string, highlightedText: string, content: string, parentTangentId?: string) => void;
 }
 
-export const ChatMessage = ({ role, content }: ChatMessageProps) => {
+export const ChatMessage = ({ 
+  role, 
+  content, 
+  messageId,
+  tangents = [],
+  onCreateTangent 
+}: ChatMessageProps) => {
   const isUser = role === "user";
+  const [showTangentSelector, setShowTangentSelector] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+    
+    if (text && text.length > 0 && !isUser && messageId && onCreateTangent) {
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      
+      if (rect) {
+        setSelectedText(text);
+        setSelectorPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + window.scrollY + 8
+        });
+        setShowTangentSelector(true);
+      }
+    }
+  };
+
+  const handleCreateTangent = (highlightedText: string, content: string) => {
+    if (messageId && onCreateTangent) {
+      onCreateTangent(messageId, highlightedText, content);
+    }
+  };
+
+  const handleReplyToTangent = (tangentId: string, content: string) => {
+    if (messageId && onCreateTangent) {
+      // Find the tangent to get its highlighted text
+      const findTangent = (tangents: Tangent[]): Tangent | undefined => {
+        for (const t of tangents) {
+          if (t.id === tangentId) return t;
+          if (t.replies) {
+            const found = findTangent(t.replies);
+            if (found) return found;
+          }
+        }
+      };
+      
+      const parentTangent = findTangent(tangents);
+      if (parentTangent) {
+        onCreateTangent(messageId, parentTangent.highlighted_text, content, tangentId);
+      }
+    }
+  };
   
   return (
     <div className={cn(
-      "py-8 px-4",
+      "py-8 px-4 relative",
       isUser ? "bg-chat-user" : "bg-chat-assistant"
     )}>
       <div className="max-w-3xl mx-auto flex gap-4">
@@ -28,33 +97,64 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
             <Bot className="h-5 w-5 text-accent-foreground" />
           )}
         </div>
-        <div className="flex-1 space-y-2 overflow-hidden prose prose-invert max-w-none">
-          <ReactMarkdown
-            components={{
-              code({ node, inline, className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || "");
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={vscDarkPlus}
-                    language={match[1]}
-                    PreTag="div"
-                    className="rounded-md my-2"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, "")}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
+        <div className="flex-1 space-y-4 overflow-hidden">
+          <div 
+            ref={contentRef}
+            className="prose prose-invert max-w-none"
+            onMouseUp={handleTextSelection}
           >
-            {content}
-          </ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                code({ node, inline, className, children, ...props }: any) {
+                  const match = /language-(\w+)/.exec(className || "");
+                  return !inline && match ? (
+                    <SyntaxHighlighter
+                      style={vscDarkPlus}
+                      language={match[1]}
+                      PreTag="div"
+                      className="rounded-md my-2"
+                      {...props}
+                    >
+                      {String(children).replace(/\n$/, "")}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+
+          {/* Tangent threads */}
+          {tangents.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-muted">
+              <div className="text-sm font-medium text-muted-foreground">
+                Tangents ({tangents.length})
+              </div>
+              {tangents.map((tangent) => (
+                <TangentThread
+                  key={tangent.id}
+                  tangent={tangent}
+                  onReply={handleReplyToTangent}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {showTangentSelector && (
+        <TangentSelector
+          selectedText={selectedText}
+          position={selectorPosition}
+          onCreateTangent={handleCreateTangent}
+          onClose={() => setShowTangentSelector(false)}
+        />
+      )}
     </div>
   );
 };

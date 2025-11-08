@@ -70,6 +70,54 @@ export type Database = {
           },
         ]
       }
+      tangents: {
+        Row: {
+          content: string
+          created_at: string
+          highlighted_text: string
+          id: string
+          message_id: string
+          parent_tangent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          highlighted_text: string
+          id?: string
+          message_id: string
+          parent_tangent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          highlighted_text?: string
+          id?: string
+          message_id?: string
+          parent_tangent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tangents_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tangents_parent_tangent_id_fkey"
+            columns: ["parent_tangent_id"]
+            isOneToOne: false
+            referencedRelation: "tangents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

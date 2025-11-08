@@ -5,9 +5,20 @@ import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface Tangent {
+  id: string;
+  highlighted_text: string;
+  content: string;
+  created_at: string;
+  parent_tangent_id?: string;
+  replies?: Tangent[];
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
+  id?: string;
+  tangents?: Tangent[];
 }
 
 interface Conversation {
@@ -62,8 +73,72 @@ const Index = () => {
     }
   };
 
+  const handleCreateTangent = (
+    messageId: string, 
+    highlightedText: string, 
+    content: string,
+    parentTangentId?: string
+  ) => {
+    const newTangent: Tangent = {
+      id: Date.now().toString(),
+      highlighted_text: highlightedText,
+      content,
+      created_at: new Date().toISOString(),
+      parent_tangent_id: parentTangentId,
+      replies: []
+    };
+
+    setConversations(prev => prev.map(conv => {
+      if (conv.id !== activeConvId) return conv;
+      
+      return {
+        ...conv,
+        messages: conv.messages.map(msg => {
+          if (msg.id !== messageId) return msg;
+          
+          // If this is a top-level tangent (no parent)
+          if (!parentTangentId) {
+            return {
+              ...msg,
+              tangents: [...(msg.tangents || []), newTangent]
+            };
+          }
+          
+          // If this is a reply to another tangent, nest it
+          const addReplyToTangent = (tangents: Tangent[]): Tangent[] => {
+            return tangents.map(t => {
+              if (t.id === parentTangentId) {
+                return {
+                  ...t,
+                  replies: [...(t.replies || []), newTangent]
+                };
+              }
+              if (t.replies && t.replies.length > 0) {
+                return {
+                  ...t,
+                  replies: addReplyToTangent(t.replies)
+                };
+              }
+              return t;
+            });
+          };
+          
+          return {
+            ...msg,
+            tangents: addReplyToTangent(msg.tangents || [])
+          };
+        })
+      };
+    }));
+  };
+
   const handleSendMessage = async (content: string) => {
-    const userMessage: Message = { role: "user", content };
+    const userMessage: Message = { 
+      role: "user", 
+      content,
+      id: `user-${Date.now()}`,
+      tangents: []
+    };
     
     setConversations(prev => prev.map(conv =>
       conv.id === activeConvId
@@ -73,9 +148,10 @@ const Index = () => {
 
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
+    const assistantMessageId = `assistant-${Date.now()}`;
 
     await streamChat(
-      allMessages,
+      allMessages.map(m => ({ role: m.role, content: m.content })),
       (chunk) => {
         assistantContent += chunk;
         setConversations(prev => prev.map(conv => {
@@ -85,9 +161,17 @@ const Index = () => {
           const lastMsg = msgs[msgs.length - 1];
           
           if (lastMsg?.role === "assistant") {
-            msgs[msgs.length - 1] = { role: "assistant", content: assistantContent };
+            msgs[msgs.length - 1] = { 
+              ...lastMsg,
+              content: assistantContent 
+            };
           } else {
-            msgs.push({ role: "assistant", content: assistantContent });
+            msgs.push({ 
+              role: "assistant", 
+              content: assistantContent,
+              id: assistantMessageId,
+              tangents: []
+            });
           }
           
           const title = conv.title === "New Chat" && msgs.length > 0
@@ -125,7 +209,14 @@ const Index = () => {
           ) : (
             <div>
               {messages.map((msg, i) => (
-                <ChatMessage key={i} role={msg.role} content={msg.content} />
+                <ChatMessage 
+                  key={msg.id || i} 
+                  role={msg.role} 
+                  content={msg.content}
+                  messageId={msg.id}
+                  tangents={msg.tangents}
+                  onCreateTangent={handleCreateTangent}
+                />
               ))}
             </div>
           )}
