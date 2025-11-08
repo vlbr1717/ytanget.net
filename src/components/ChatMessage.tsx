@@ -54,14 +54,40 @@ export const ChatMessage = ({
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   };
 
-  // Process content to replace highlighted text with tangent links
+  // Process content to replace highlighted text with unique markdown-safe markers
   const processedContent = tangents.reduce((text, tangent, index) => {
     const shortenedText = shortenText(tangent.highlighted_text);
-    const marker = `[TANGENT_${index}_START]${shortenedText}[TANGENT_${index}_END]`;
-    // Use regex with global flag to replace all occurrences, escape special chars
+    // Use a markdown-safe marker that won't be parsed
+    const marker = `<TANGENT_LINK_${index}>${shortenedText}</TANGENT_LINK_${index}>`;
     const regex = new RegExp(escapeRegex(tangent.highlighted_text), 'g');
     return text.replace(regex, marker);
   }, content);
+
+  // Function to convert tangent markers to clickable buttons
+  const renderTextWithTangents = (text: string) => {
+    const parts = text.split(/(<TANGENT_LINK_\d+>[\s\S]*?<\/TANGENT_LINK_\d+>)/g);
+    return parts.map((part, i) => {
+      const match = part.match(/<TANGENT_LINK_(\d+)>([\s\S]*?)<\/TANGENT_LINK_\d+>/);
+      if (match) {
+        const tangentIndex = parseInt(match[1]);
+        const displayText = match[2];
+        const tangent = tangents[tangentIndex];
+        if (tangent) {
+          return (
+            <button
+              key={`tangent-${i}`}
+              onClick={() => handleTangentLinkClick(tangent.id)}
+              className="inline text-primary hover:text-primary/80 underline decoration-dotted underline-offset-2 transition-colors cursor-pointer"
+              title={tangent.highlighted_text}
+            >
+              {displayText}
+            </button>
+          );
+        }
+      }
+      return part;
+    });
+  };
 
   const handleTangentLinkClick = (tangentId: string) => {
     const element = document.getElementById(`tangent-${tangentId}`);
@@ -172,37 +198,37 @@ export const ChatMessage = ({
                   );
                 },
                 p({ children, ...props }: any) {
-                  // Replace tangent markers with clickable links
-                  const processChildren = (child: any): any => {
-                    if (typeof child === 'string') {
-                      // Use regex with dotall support to match across newlines
-                      const parts = child.split(/(\[TANGENT_\d+_START\][\s\S]*?\[TANGENT_\d+_END\])/g);
-                      return parts.map((part, i) => {
-                        const match = part.match(/\[TANGENT_(\d+)_START\]([\s\S]*?)\[TANGENT_\d+_END\]/);
-                        if (match) {
-                          const tangentIndex = parseInt(match[1]);
-                          const displayText = match[2];
-                          const tangent = tangents[tangentIndex];
-                          if (tangent) {
-                            return (
-                              <button
-                                key={i}
-                                onClick={() => handleTangentLinkClick(tangent.id)}
-                                className="inline text-primary hover:text-primary/80 underline decoration-dotted underline-offset-2 transition-colors cursor-pointer"
-                                title={tangent.highlighted_text}
-                              >
-                                {displayText}
-                              </button>
-                            );
-                          }
-                        }
-                        return part;
-                      });
+                  const processNode = (node: any): any => {
+                    if (typeof node === 'string') {
+                      return renderTextWithTangents(node);
                     }
-                    return child;
+                    if (Array.isArray(node)) {
+                      return node.map((n, i) => <span key={i}>{processNode(n)}</span>);
+                    }
+                    return node;
                   };
                   
-                  return <p {...props}>{Array.isArray(children) ? children.map(processChildren) : processChildren(children)}</p>;
+                  return <p {...props}>{processNode(children)}</p>;
+                },
+                strong({ children, ...props }: any) {
+                  const processNode = (node: any): any => {
+                    if (typeof node === 'string') {
+                      return renderTextWithTangents(node);
+                    }
+                    return node;
+                  };
+                  
+                  return <strong {...props}>{processNode(children)}</strong>;
+                },
+                em({ children, ...props }: any) {
+                  const processNode = (node: any): any => {
+                    if (typeof node === 'string') {
+                      return renderTextWithTangents(node);
+                    }
+                    return node;
+                  };
+                  
+                  return <em {...props}>{processNode(children)}</em>;
                 },
               }}
             >
