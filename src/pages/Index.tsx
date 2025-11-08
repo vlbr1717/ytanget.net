@@ -1,28 +1,56 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useConversations } from "@/hooks/useConversations";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-}
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 const Index = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    { id: "1", title: "New Chat", messages: [] }
-  ]);
-  const [activeConvId, setActiveConvId] = useState<string>("1");
+  const [user, setUser] = useState<any>(null);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  const {
+    conversations,
+    loading: convsLoading,
+    createConversation,
+    updateConversationTitle,
+    addMessage,
+    updateLastMessage,
+  } = useConversations(user?.id);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (conversations.length > 0 && !activeConvId) {
+      setActiveConvId(conversations[0].id);
+    }
+  }, [conversations, activeConvId]);
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
   const messages = activeConversation?.messages || [];
@@ -33,23 +61,22 @@ const Index = () => {
     }
   }, [messages]);
 
-  const handleNewChat = () => {
-    const newId = Date.now().toString();
-    setConversations(prev => [
-      ...prev,
-      { id: newId, title: "New Chat", messages: [] }
-    ]);
-    setActiveConvId(newId);
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleNewChat = async () => {
+    const newId = await createConversation();
+    if (newId) {
+      setActiveConvId(newId);
+    }
   };
 
   const handleSendMessage = async (content: string) => {
-    const userMessage: Message = { role: "user", content };
-    
-    setConversations(prev => prev.map(conv =>
-      conv.id === activeConvId
-        ? { ...conv, messages: [...conv.messages, userMessage] }
-        : conv
-    ));
+    if (!activeConvId) return;
+
+    const userMessage = { role: "user" as const, content };
+    await addMessage(activeConvId, userMessage);
 
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
@@ -58,30 +85,28 @@ const Index = () => {
       allMessages,
       (chunk) => {
         assistantContent += chunk;
-        setConversations(prev => prev.map(conv => {
-          if (conv.id !== activeConvId) return conv;
-          
-          const msgs = [...conv.messages];
-          const lastMsg = msgs[msgs.length - 1];
-          
-          if (lastMsg?.role === "assistant") {
-            msgs[msgs.length - 1] = { role: "assistant", content: assistantContent };
-          } else {
-            msgs.push({ role: "assistant", content: assistantContent });
-          }
-          
-          const title = conv.title === "New Chat" && msgs.length > 0
-            ? msgs[0].content.slice(0, 30) + (msgs[0].content.length > 30 ? "..." : "")
-            : conv.title;
-          
-          return { ...conv, messages: msgs, title };
-        }));
+        updateLastMessage(activeConvId, assistantContent);
       },
-      () => {
-        console.log("Stream completed");
+      async () => {
+        await addMessage(activeConvId, { role: "assistant", content: assistantContent });
+        
+        const currentConv = conversations.find(c => c.id === activeConvId);
+        if (currentConv?.title === "New Chat" && allMessages.length > 0) {
+          const newTitle = allMessages[0].content.slice(0, 30) + 
+            (allMessages[0].content.length > 30 ? "..." : "");
+          await updateConversationTitle(activeConvId, newTitle);
+        }
       }
     );
   };
+
+  if (convsLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -93,6 +118,13 @@ const Index = () => {
       />
       
       <div className="flex-1 flex flex-col">
+        <div className="border-b border-border p-4 flex justify-between items-center">
+          <h1 className="text-xl font-semibold">ytangent</h1>
+          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+        
         <ScrollArea className="flex-1" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
