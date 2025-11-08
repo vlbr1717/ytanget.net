@@ -110,7 +110,7 @@ All colors MUST be HSL.
   /* Center and add spacing to block math formulas */
   .katex-display {
     text-align: center !important;
-    margin: 2rem 0 !important;
+    margin: 4.5rem 0 !important;
     display: flex !important;
     justify-content: center !important;
   }
