@@ -96,16 +96,39 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent,
       const range = selection?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();
       
-      if (rect && conversationRef.current?.contains(range?.commonAncestorContainer as Node)) {
-        console.log('TangentThread showing selector:', { tangentId: tangent.id, text });
-        setSelectedText(text);
-        setSelectorPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY + 8
-        });
-        setShowTangentSelector(true);
-      } else {
-        console.log('TangentThread selection not in conversation');
+      // Check if selection is within code or math blocks
+      if (range) {
+        let node: Node | null = range.commonAncestorContainer;
+        let isProtected = false;
+        
+        // Traverse up to check for protected elements
+        while (node && node !== conversationRef.current) {
+          if (node instanceof Element) {
+            const element = node as Element;
+            // Check if inside code block or math block
+            if (element.tagName === 'CODE' || 
+                element.tagName === 'PRE' ||
+                element.classList.contains('katex') ||
+                element.classList.contains('katex-mathml') ||
+                element.classList.contains('katex-html')) {
+              isProtected = true;
+              break;
+            }
+          }
+          node = node.parentNode;
+        }
+        
+        if (!isProtected && rect && conversationRef.current?.contains(range?.commonAncestorContainer as Node)) {
+          console.log('TangentThread showing selector:', { tangentId: tangent.id, text });
+          setSelectedText(text);
+          setSelectorPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + window.scrollY + 8
+          });
+          setShowTangentSelector(true);
+        } else {
+          console.log('TangentThread selection not allowed or not in conversation');
+        }
       }
     }
   };
