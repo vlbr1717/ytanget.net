@@ -39,6 +39,7 @@ const Index = () => {
     { id: "1", title: "New Chat", messages: [] }
   ]);
   const [activeConvId, setActiveConvId] = useState<string>("1");
+  const [sidebarVisible, setSidebarVisible] = useState<boolean>(true);
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -571,6 +572,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background">
+      {sidebarVisible && (
         <ChatSidebar
           conversations={conversations}
           activeId={activeConvId}
@@ -578,7 +580,32 @@ const Index = () => {
           onSelectChat={setActiveConvId}
           onDeleteChat={handleDeleteChat}
           onPresetClick={handlePresetClick}
+          onToggleSidebar={() => setSidebarVisible(false)}
         />
+      )}
+      
+      {!sidebarVisible && (
+        <button
+          onClick={() => setSidebarVisible(true)}
+          className="fixed top-4 left-4 z-50 p-2 bg-sidebar-background border border-sidebar-border rounded-md hover:bg-sidebar-accent transition-colors"
+          aria-label="Show sidebar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
+          </svg>
+        </button>
+      )}
       
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1" ref={scrollRef}>

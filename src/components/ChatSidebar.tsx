@@ -32,9 +32,10 @@ interface ChatSidebarProps {
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onPresetClick: (presetId: string) => void;
+  onToggleSidebar?: () => void;
 }
 
-export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onPresetClick }: ChatSidebarProps) => {
+export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onPresetClick, onToggleSidebar }: ChatSidebarProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [convToDelete, setConvToDelete] = useState<string | null>(null);
@@ -65,7 +66,32 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
             alt="Tangent logo" 
             className="w-8 h-8"
           />
-          <h1 className="text-2xl font-semibold">Tangent</h1>
+          <h1 className="text-2xl font-semibold flex-1">Tangent</h1>
+          {onToggleSidebar && (
+            <Button
+              onClick={onToggleSidebar}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Hide sidebar"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 3v18" />
+                <path d="m15 9-6 6" />
+              </svg>
+            </Button>
+          )}
         </div>
         
         <div className="space-y-1 mb-1">
