@@ -49,11 +49,18 @@ export const ChatMessage = ({
     return text.slice(0, maxLength) + "...";
   };
 
+  // Escape special regex characters
+  const escapeRegex = (str: string) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
   // Process content to replace highlighted text with tangent links
   const processedContent = tangents.reduce((text, tangent, index) => {
     const shortenedText = shortenText(tangent.highlighted_text);
     const marker = `[TANGENT_${index}_START]${shortenedText}[TANGENT_${index}_END]`;
-    return text.replace(tangent.highlighted_text, marker);
+    // Use regex with global flag to replace all occurrences, escape special chars
+    const regex = new RegExp(escapeRegex(tangent.highlighted_text), 'g');
+    return text.replace(regex, marker);
   }, content);
 
   const handleTangentLinkClick = (tangentId: string) => {
@@ -161,9 +168,10 @@ export const ChatMessage = ({
                   // Replace tangent markers with clickable links
                   const processChildren = (child: any): any => {
                     if (typeof child === 'string') {
-                      const parts = child.split(/(\[TANGENT_\d+_START\].*?\[TANGENT_\d+_END\])/g);
+                      // Use regex with dotall support to match across newlines
+                      const parts = child.split(/(\[TANGENT_\d+_START\][\s\S]*?\[TANGENT_\d+_END\])/g);
                       return parts.map((part, i) => {
-                        const match = part.match(/\[TANGENT_(\d+)_START\](.*?)\[TANGENT_\d+_END\]/);
+                        const match = part.match(/\[TANGENT_(\d+)_START\]([\s\S]*?)\[TANGENT_\d+_END\]/);
                         if (match) {
                           const tangentIndex = parseInt(match[1]);
                           const displayText = match[2];
@@ -174,6 +182,7 @@ export const ChatMessage = ({
                                 key={i}
                                 onClick={() => handleTangentLinkClick(tangent.id)}
                                 className="inline text-primary hover:text-primary/80 underline decoration-dotted underline-offset-2 transition-colors cursor-pointer"
+                                title={tangent.highlighted_text}
                               >
                                 {displayText}
                               </button>
