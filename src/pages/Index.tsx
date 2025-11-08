@@ -340,7 +340,8 @@ const Index = () => {
           const contextMessages = [
             { role: "assistant" as const, content: message.content },
             { role: "user" as const, content: `Context: "${targetTangent.highlighted_text}"` },
-            ...targetTangent.conversation.map(m => ({ role: m.role, content: m.content }))
+            ...targetTangent.conversation.map(m => ({ role: m.role, content: m.content })),
+            { role: "user" as const, content: userMessage.content }
           ];
 
           let aiContent = "";
