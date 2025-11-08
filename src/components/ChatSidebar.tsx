@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, MessageSquare, MoreVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,6 +35,7 @@ interface ChatSidebarProps {
 }
 
 export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onPresetClick }: ChatSidebarProps) => {
+  const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [convToDelete, setConvToDelete] = useState<string | null>(null);
 
@@ -51,8 +53,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
   };
 
   const presetItems = [
-    { id: 'why-built', emoji: '💡', title: 'Why we built tangent' },
-    { id: 'how-to-use', emoji: '📘', title: 'How to use' }
+    { id: 'how-to-use', emoji: '📘', title: 'How to use', isLink: true }
   ];
 
   return (
@@ -71,7 +72,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
           {presetItems.map((item) => (
             <Button
               key={item.id}
-              onClick={() => onPresetClick(item.id)}
+              onClick={() => item.isLink ? navigate('/how-to-use') : onPresetClick(item.id)}
               variant="outline-hover"
               className="w-full justify-start gap-2 text-foreground pl-4"
             >
