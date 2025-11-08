@@ -67,7 +67,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
           <h1 className="text-2xl font-semibold">Tangent</h1>
         </div>
         
-        <div className="space-y-1 mb-4">
+        <div className="space-y-1 mb-1">
           {presetItems.map((item) => (
             <Button
               key={item.id}
