@@ -25,6 +25,17 @@ serve(async (req) => {
       );
     }
 
+    // Add system message for LaTeX formatting
+    const systemMessage = {
+      role: 'system',
+      content: 'You are a helpful assistant. When including mathematical equations or formulas, ALWAYS use proper LaTeX syntax with dollar signs: Use $...$ for inline math (e.g., $E = mc^2$) and $$...$$ for display/block equations (e.g., $$F_d = \\frac{1}{2} \\cdot C_d \\cdot \\rho \\cdot A \\cdot v^2$$). Never use square brackets [ ] for LaTeX equations.'
+    };
+
+    // Prepend system message if not already present
+    const messagesWithSystem = messages[0]?.role === 'system' 
+      ? messages 
+      : [systemMessage, ...messages];
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -33,7 +44,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: messages,
+        messages: messagesWithSystem,
         stream: true,
       }),
     });
