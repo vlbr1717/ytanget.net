@@ -88,7 +88,10 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
                       className="min-h-[80px]"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleReply}>
+                      <Button size="sm" onClick={() => {
+                        console.log('Post Reply button clicked! tangent.id:', tangent.id, 'content:', replyContent);
+                        handleReply();
+                      }}>
                         Post Reply
                       </Button>
                       <Button 
