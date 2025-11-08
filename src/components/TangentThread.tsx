@@ -218,9 +218,6 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent,
                   className="space-y-2 relative"
                   onMouseUp={handleTextSelection}
                 >
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {onCreateSubTangent ? 'Select text to create a sub-tangent' : ''}
-                  </div>
                   {tangent.conversation.map((msg) => (
                     <div 
                       key={msg.id}
