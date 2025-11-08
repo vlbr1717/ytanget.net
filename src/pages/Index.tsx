@@ -388,8 +388,15 @@ const Index = () => {
         <ScrollArea className="flex-1" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-semibold">ytangent</h1>
+              <div className="text-center space-y-4">
+                <img 
+                  src="/favicon.svg" 
+                  alt="ytangent logo" 
+                  className="w-24 h-24 mx-auto"
+                />
+                <h1 className="text-4xl font-semibold bg-gradient-to-r from-primary via-primary-glow to-primary bg-clip-text text-transparent">
+                  ytangent
+                </h1>
                 <p className="text-muted-foreground">Start a conversation</p>
               </div>
             </div>
