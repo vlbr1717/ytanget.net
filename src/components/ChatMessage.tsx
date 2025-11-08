@@ -65,16 +65,10 @@ export const ChatMessage = ({
     // Find all LaTeX regions (inline $...$ and block $$...$$) and code blocks
     const protectedRegions: Array<{start: number, end: number}> = [];
     
-    // Find block math $$...$$
+    // Find block math $$...$$ only (single $ not treated as math)
     const blockMathRegex = /\$\$[\s\S]*?\$\$/g;
     let match;
     while ((match = blockMathRegex.exec(content)) !== null) {
-      protectedRegions.push({start: match.index, end: match.index + match[0].length});
-    }
-    
-    // Find inline math $...$
-    const inlineMathRegex = /\$[^\$\n]+?\$/g;
-    while ((match = inlineMathRegex.exec(content)) !== null) {
       protectedRegions.push({start: match.index, end: match.index + match[0].length});
     }
     
