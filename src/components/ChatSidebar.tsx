@@ -84,7 +84,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
         <Button 
           onClick={onNewChat}
           className="w-full justify-start gap-2"
-          variant="outline-primary"
+          variant="outline-hover"
         >
           <Plus className="h-4 w-4" />
           New chat
