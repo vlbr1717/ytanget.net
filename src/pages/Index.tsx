@@ -64,7 +64,10 @@ const Index = () => {
     if (!activeConvId) return;
 
     const userMessage = { role: "user" as const, content };
-    await addMessage(activeConvId, userMessage);
+    const currentConvId = activeConvId;
+    const shouldUpdateTitle = activeConversation?.title === "New Chat";
+    
+    await addMessage(currentConvId, userMessage);
 
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
@@ -73,15 +76,14 @@ const Index = () => {
       allMessages,
       (chunk) => {
         assistantContent += chunk;
-        updateLastMessage(activeConvId, assistantContent);
+        updateLastMessage(currentConvId, assistantContent);
       },
       async () => {
-        // updateLastMessage already created the assistant message, just update title if needed
-        const currentConv = conversations.find(c => c.id === activeConvId);
-        if (currentConv?.title === "New Chat" && allMessages.length > 0) {
+        // Update title if this is a new chat
+        if (shouldUpdateTitle && allMessages.length > 0) {
           const newTitle = allMessages[0].content.slice(0, 30) + 
             (allMessages[0].content.length > 30 ? "..." : "");
-          await updateConversationTitle(activeConvId, newTitle);
+          await updateConversationTitle(currentConvId, newTitle);
         }
       }
     );
