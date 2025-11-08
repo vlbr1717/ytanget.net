@@ -1,12 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus, Copy } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useToast } from "@/hooks/use-toast";
 
 interface TangentSelectorProps {
   selectedText: string;
@@ -23,6 +30,7 @@ export const TangentSelector = ({
 }: TangentSelectorProps) => {
   const [tangentContent, setTangentContent] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const { toast } = useToast();
 
   const handleCreate = () => {
     if (tangentContent.trim() && selectedText.trim()) {
@@ -30,6 +38,20 @@ export const TangentSelector = ({
       setTangentContent("");
       setIsOpen(false);
       onClose();
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(selectedText);
+      toast({
+        description: "Copied to clipboard",
+      });
+    } catch (err) {
+      toast({
+        description: "Failed to copy",
+        variant: "destructive",
+      });
     }
   };
 
@@ -62,9 +84,44 @@ export const TangentSelector = ({
       <PopoverContent className="w-80" side="right" align="start" sideOffset={8}>
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium">Selected text:</label>
-            <div className="text-sm text-muted-foreground italic mt-1 p-2 bg-muted rounded">
-              "{selectedText}"
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Selected text:</label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="h-6 px-2"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground italic p-2 bg-muted rounded prose prose-sm prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  code({ node, inline, className, children, ...props }: any) {
+                    const match = /language-(\w+)/.exec(className || "");
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        style={vscDarkPlus}
+                        language={match[1]}
+                        PreTag="div"
+                        className="rounded-md my-1"
+                        {...props}
+                      >
+                        {String(children).replace(/\n$/, "")}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs" {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {selectedText}
+              </ReactMarkdown>
             </div>
           </div>
           

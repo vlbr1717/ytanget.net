@@ -153,8 +153,33 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
                 "{shortenText(tangent.highlighted_text)}"
               </button>
             ) : (
-              <div className="text-sm bg-muted/30 p-2 rounded italic border-l-2 border-primary/50">
-                "{tangent.highlighted_text}"
+              <div className="text-sm bg-muted/30 p-2 rounded border-l-2 border-primary/50 prose prose-sm prose-invert max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    code({ node, inline, className, children, ...props }: any) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={vscDarkPlus}
+                          language={match[1]}
+                          PreTag="div"
+                          className="rounded-md my-1"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, "")}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className="bg-muted px-1 py-0.5 rounded text-xs" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {tangent.highlighted_text}
+                </ReactMarkdown>
               </div>
             )}
             
