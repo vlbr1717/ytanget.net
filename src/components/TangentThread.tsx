@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { TangentSelector } from "@/components/TangentSelector";
 import { cn } from "@/lib/utils";
 
 interface TangentMessage {
@@ -23,13 +24,18 @@ interface TangentThreadProps {
   tangent: Tangent;
   level?: number;
   onReply: (tangentId: string, content: string) => void;
+  onCreateSubTangent?: (parentTangentId: string, highlightedText: string, content: string) => void;
 }
 
-export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProps) => {
+export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent }: TangentThreadProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState("");
+  const [showTangentSelector, setShowTangentSelector] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const tangentRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
 
   const shortenText = (text: string, maxLength: number = 50) => {
     if (text.length <= maxLength) return text;
@@ -44,6 +50,32 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
       setTimeout(() => {
         tangentRef.current?.classList.remove("animate-pulse");
       }, 1000);
+    }
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+    
+    if (text && text.length > 0 && onCreateSubTangent) {
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      
+      if (rect && conversationRef.current?.contains(range?.commonAncestorContainer as Node)) {
+        setSelectedText(text);
+        setSelectorPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + window.scrollY + 8
+        });
+        setShowTangentSelector(true);
+      }
+    }
+  };
+
+  const handleCreateSubTangent = (highlightedText: string, content: string) => {
+    if (onCreateSubTangent) {
+      onCreateSubTangent(tangent.id, highlightedText, content);
+      setShowTangentSelector(false);
     }
   };
 
@@ -96,7 +128,11 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
             {!isCollapsed && (
               <>
                 {/* Display conversation */}
-                <div className="space-y-2">
+                <div 
+                  ref={conversationRef}
+                  className="space-y-2"
+                  onMouseUp={handleTextSelection}
+                >
                   {tangent.conversation.map((msg) => (
                     <div 
                       key={msg.id}
@@ -167,11 +203,21 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
                 tangent={subTangent}
                 level={level + 1}
                 onReply={onReply}
+                onCreateSubTangent={onCreateSubTangent}
               />
             ))}
           </div>
         )}
       </div>
+
+      {showTangentSelector && (
+        <TangentSelector
+          selectedText={selectedText}
+          position={selectorPosition}
+          onCreateTangent={handleCreateSubTangent}
+          onClose={() => setShowTangentSelector(false)}
+        />
+      )}
     </div>
   );
 };

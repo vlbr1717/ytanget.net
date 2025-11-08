@@ -121,6 +121,13 @@ export const ChatMessage = ({
       }
     }
   };
+
+  const handleCreateSubTangent = (parentTangentId: string, highlightedText: string, content: string) => {
+    console.log('ChatMessage handleCreateSubTangent called:', { parentTangentId, highlightedText, content });
+    if (messageId && onCreateTangent) {
+      onCreateTangent(messageId, highlightedText, content, parentTangentId);
+    }
+  };
   
   return (
     <div className={cn(
@@ -214,6 +221,7 @@ export const ChatMessage = ({
                   key={tangent.id}
                   tangent={tangent}
                   onReply={handleReplyToTangent}
+                  onCreateSubTangent={handleCreateSubTangent}
                 />
               ))}
             </div>
