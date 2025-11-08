@@ -57,17 +57,22 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
     const selection = window.getSelection();
     const text = selection?.toString().trim();
     
+    console.log('TangentThread text selection:', { text, hasCallback: !!onCreateSubTangent });
+    
     if (text && text.length > 0 && onCreateSubTangent) {
       const range = selection?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();
       
       if (rect && conversationRef.current?.contains(range?.commonAncestorContainer as Node)) {
+        console.log('TangentThread showing selector:', { tangentId: tangent.id, text });
         setSelectedText(text);
         setSelectorPosition({
           x: rect.left + rect.width / 2,
           y: rect.bottom + window.scrollY + 8
         });
         setShowTangentSelector(true);
+      } else {
+        console.log('TangentThread selection not in conversation');
       }
     }
   };
@@ -86,13 +91,26 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
     setIsReplying(false);
   };
 
+  // Get border color based on nesting level
+  const getBorderColor = (level: number) => {
+    const colors = [
+      'border-primary',
+      'border-accent', 
+      'border-secondary',
+      'border-primary/70',
+      'border-accent/70',
+    ];
+    return colors[level % colors.length];
+  };
+
   return (
     <div 
       ref={tangentRef}
       id={`tangent-${tangent.id}`}
       className={cn(
-        "border-l-2 border-muted pl-4 py-2 transition-all",
-        level > 0 && "ml-4"
+        "border-l-2 pl-4 py-2 transition-all",
+        getBorderColor(level),
+        level > 0 && "ml-6" // Increased indent for better visual hierarchy
       )}
     >
       <div className="space-y-2">
@@ -130,14 +148,17 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent 
                 {/* Display conversation */}
                 <div 
                   ref={conversationRef}
-                  className="space-y-2"
+                  className="space-y-2 relative"
                   onMouseUp={handleTextSelection}
                 >
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {onCreateSubTangent ? 'Select text to create a sub-tangent' : ''}
+                  </div>
                   {tangent.conversation.map((msg) => (
                     <div 
                       key={msg.id}
                       className={cn(
-                        "text-sm p-2 rounded",
+                        "text-sm p-2 rounded select-text",
                         msg.role === "user" ? "bg-muted/50" : "bg-muted/20"
                       )}
                     >
