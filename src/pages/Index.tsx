@@ -59,8 +59,7 @@ const Index = () => {
         updateLastMessage(activeConvId, assistantContent);
       },
       async () => {
-        await addMessage(activeConvId, { role: "assistant", content: assistantContent });
-        
+        // updateLastMessage already created the assistant message, just update title if needed
         const currentConv = conversations.find(c => c.id === activeConvId);
         if (currentConv?.title === "New Chat" && allMessages.length > 0) {
           const newTitle = allMessages[0].content.slice(0, 30) + 
