@@ -1,21 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useConversations } from "@/hooks/useConversations";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
 
 const Index = () => {
-  const [user, setUser] = useState<any>(null);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   const {
     conversations,
@@ -24,27 +18,7 @@ const Index = () => {
     updateConversationTitle,
     addMessage,
     updateLastMessage,
-  } = useConversations(user?.id);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  } = useConversations();
 
   useEffect(() => {
     if (conversations.length > 0 && !activeConvId) {
@@ -60,10 +34,6 @@ const Index = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
 
   const handleNewChat = async () => {
     const newId = await createConversation();
@@ -100,7 +70,7 @@ const Index = () => {
     );
   };
 
-  if (convsLoading || !user) {
+  if (convsLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <p className="text-muted-foreground">Loading...</p>
@@ -118,11 +88,8 @@ const Index = () => {
       />
       
       <div className="flex-1 flex flex-col">
-        <div className="border-b border-border p-4 flex justify-between items-center">
+        <div className="border-b border-border p-4">
           <h1 className="text-xl font-semibold">ytangent</h1>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
         
         <ScrollArea className="flex-1" ref={scrollRef}>
