@@ -33,6 +33,13 @@ export const TangentSelector = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleCreate();
+    }
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
@@ -42,7 +49,7 @@ export const TangentSelector = ({
         <Button
           size="sm"
           variant="secondary"
-          className="absolute"
+          className="fixed z-50"
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
@@ -52,7 +59,7 @@ export const TangentSelector = ({
           Create Tangent
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80">
+      <PopoverContent className="w-80" side="right" align="start" sideOffset={8}>
         <div className="space-y-3">
           <div>
             <label className="text-sm font-medium">Selected text:</label>
@@ -64,9 +71,10 @@ export const TangentSelector = ({
           <div>
             <label className="text-sm font-medium">Your tangent:</label>
             <Textarea
-              placeholder="Write your tangent thoughts..."
+              placeholder="Write your tangent thoughts... (Enter to send, Shift+Enter for new line)"
               value={tangentContent}
               onChange={(e) => setTangentContent(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="mt-1 min-h-[100px]"
               autoFocus
             />
