@@ -206,7 +206,7 @@ export const TangentSelector = ({
               disabled={isLoadingInfo}
             >
               <Globe className="h-3 w-3 mr-1" />
-              {isLoadingInfo ? "Loading..." : "Get Live Info"}
+              {isLoadingInfo ? "Searching..." : "Search Online"}
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Cancel
