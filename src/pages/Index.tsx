@@ -97,7 +97,7 @@ const Index = () => {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-2">
-                <h1 className="text-4xl font-semibold">ChatGPT Clone</h1>
+                <h1 className="text-4xl font-semibold">ytangent</h1>
                 <p className="text-muted-foreground">Start a conversation</p>
               </div>
             </div>
