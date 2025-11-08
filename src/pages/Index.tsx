@@ -3,30 +3,26 @@ import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
-import { useConversations } from "@/hooks/useConversations";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[];
+}
+
 const Index = () => {
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([
+    { id: "1", title: "New Chat", messages: [] }
+  ]);
+  const [activeConvId, setActiveConvId] = useState<string>("1");
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const {
-    conversations,
-    loading: convsLoading,
-    createConversation,
-    updateConversationTitle,
-    addMessage,
-    updateLastMessage,
-    addTangent,
-    deleteConversation,
-  } = useConversations();
-
-  useEffect(() => {
-    if (conversations.length > 0 && !activeConvId) {
-      setActiveConvId(conversations[0].id);
-    }
-  }, [conversations, activeConvId]);
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
   const messages = activeConversation?.messages || [];
@@ -37,37 +33,23 @@ const Index = () => {
     }
   }, [messages]);
 
-  const handleNewChat = async () => {
-    const newId = await createConversation();
-    if (newId) {
-      setActiveConvId(newId);
-    }
-  };
-
-  const handleDeleteChat = (convId: string) => {
-    const newActiveId = deleteConversation(convId);
-    
-    // If we deleted the active conversation
-    if (convId === activeConvId) {
-      if (newActiveId) {
-        // A new conversation was created
-        setActiveConvId(newActiveId);
-      } else {
-        // Switch to first remaining conversation
-        const remaining = conversations.filter(c => c.id !== convId);
-        setActiveConvId(remaining[0]?.id || null);
-      }
-    }
+  const handleNewChat = () => {
+    const newId = Date.now().toString();
+    setConversations(prev => [
+      ...prev,
+      { id: newId, title: "New Chat", messages: [] }
+    ]);
+    setActiveConvId(newId);
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!activeConvId) return;
-
-    const userMessage = { role: "user" as const, content };
-    const currentConvId = activeConvId;
-    const shouldUpdateTitle = activeConversation?.title === "New Chat";
+    const userMessage: Message = { role: "user", content };
     
-    await addMessage(currentConvId, userMessage);
+    setConversations(prev => prev.map(conv =>
+      conv.id === activeConvId
+        ? { ...conv, messages: [...conv.messages, userMessage] }
+        : conv
+    ));
 
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
@@ -76,26 +58,30 @@ const Index = () => {
       allMessages,
       (chunk) => {
         assistantContent += chunk;
-        updateLastMessage(currentConvId, assistantContent);
+        setConversations(prev => prev.map(conv => {
+          if (conv.id !== activeConvId) return conv;
+          
+          const msgs = [...conv.messages];
+          const lastMsg = msgs[msgs.length - 1];
+          
+          if (lastMsg?.role === "assistant") {
+            msgs[msgs.length - 1] = { role: "assistant", content: assistantContent };
+          } else {
+            msgs.push({ role: "assistant", content: assistantContent });
+          }
+          
+          const title = conv.title === "New Chat" && msgs.length > 0
+            ? msgs[0].content.slice(0, 30) + (msgs[0].content.length > 30 ? "..." : "")
+            : conv.title;
+          
+          return { ...conv, messages: msgs, title };
+        }));
       },
-      async () => {
-        // Update title if this is a new chat
-        if (shouldUpdateTitle && allMessages.length > 0) {
-          const newTitle = allMessages[0].content.slice(0, 30) + 
-            (allMessages[0].content.length > 30 ? "..." : "");
-          await updateConversationTitle(currentConvId, newTitle);
-        }
+      () => {
+        console.log("Stream completed");
       }
     );
   };
-
-  if (convsLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -104,14 +90,9 @@ const Index = () => {
         activeId={activeConvId}
         onNewChat={handleNewChat}
         onSelectChat={setActiveConvId}
-        onDeleteChat={handleDeleteChat}
       />
       
       <div className="flex-1 flex flex-col">
-        <div className="border-b border-border p-4">
-          <h1 className="text-xl font-semibold">ytangent</h1>
-        </div>
-        
         <ScrollArea className="flex-1" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -123,18 +104,7 @@ const Index = () => {
           ) : (
             <div>
               {messages.map((msg, i) => (
-                <ChatMessage
-                  key={i}
-                  role={msg.role}
-                  content={msg.content}
-                  tangents={msg.tangents}
-                  messageIndex={i}
-                  onAddTangent={(messageIndex, selectedText, startPos, endPos, content, parentTangentId) => {
-                    if (activeConvId) {
-                      addTangent(activeConvId, messageIndex, selectedText, startPos, endPos, content, parentTangentId);
-                    }
-                  }}
-                />
+                <ChatMessage key={i} role={msg.role} content={msg.content} />
               ))}
             </div>
           )}
