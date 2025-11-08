@@ -5,13 +5,20 @@ import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface TangentMessage {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  created_at: string;
+}
+
 interface Tangent {
   id: string;
   highlighted_text: string;
-  content: string;
+  conversation: TangentMessage[];
   created_at: string;
   parent_tangent_id?: string;
-  replies?: Tangent[];
+  sub_tangents?: Tangent[];
 }
 
 interface Message {
@@ -81,70 +88,157 @@ const Index = () => {
   ) => {
     console.log('handleCreateTangent called:', { messageId, content, parentTangentId });
     
-    // Build AI context BEFORE updating state if user provided content
-    let shouldGenerateAiReply = false;
-    let contextMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-    
-    if (content.trim()) {
-      console.log('User provided content, will generate AI reply');
-      const message = messages.find(m => m.id === messageId);
-      if (message) {
-        shouldGenerateAiReply = true;
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    // If parentTangentId exists, this is a reply within an existing tangent
+    if (parentTangentId) {
+      // Add message to the tangent's conversation
+      const userMessage: TangentMessage = {
+        id: Date.now().toString(),
+        content,
+        role: "user",
+        created_at: new Date().toISOString()
+      };
+
+      setConversations(prev => prev.map(conv => {
+        if (conv.id !== activeConvId) return conv;
         
-        if (parentTangentId) {
-          // This is a reply to an existing tangent - include thread context
-          console.log('Building context from tangent thread...');
-          const buildTangentContext = (tangents: Tangent[], targetId: string, path: Tangent[] = []): Tangent[] | null => {
-            for (const t of tangents) {
-              const currentPath = [...path, t];
-              if (t.id === targetId) return currentPath;
-              if (t.replies) {
-                const found = buildTangentContext(t.replies, targetId, currentPath);
-                if (found) return found;
-              }
+        return {
+          ...conv,
+          messages: conv.messages.map(msg => {
+            if (msg.id !== messageId) return msg;
+            
+            const addMessageToTangent = (tangents: Tangent[]): Tangent[] => {
+              return tangents.map(t => {
+                if (t.id === parentTangentId) {
+                  return {
+                    ...t,
+                    conversation: [...t.conversation, userMessage]
+                  };
+                }
+                if (t.sub_tangents && t.sub_tangents.length > 0) {
+                  return {
+                    ...t,
+                    sub_tangents: addMessageToTangent(t.sub_tangents)
+                  };
+                }
+                return t;
+              });
+            };
+            
+            return {
+              ...msg,
+              tangents: addMessageToTangent(msg.tangents || [])
+            };
+          })
+        };
+      }));
+
+      // Generate AI reply in the same conversation
+      if (content.trim()) {
+        const buildTangentContext = (tangents: Tangent[], targetId: string, path: Tangent[] = []): Tangent[] | null => {
+          for (const t of tangents) {
+            const currentPath = [...path, t];
+            if (t.id === targetId) return currentPath;
+            if (t.sub_tangents) {
+              const found = buildTangentContext(t.sub_tangents, targetId, currentPath);
+              if (found) return found;
             }
-            return null;
-          };
-
-          const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
-          console.log('Found tangent path:', tangentPath);
-          
-          if (tangentPath) {
-            // Build conversation context with the full thread
-            contextMessages = [
-              { role: "assistant" as const, content: message.content },
-              { role: "user" as const, content: `Context: Original highlighted text: "${tangentPath[0].highlighted_text}"` }
-            ];
-
-            // Add all tangents in the thread as conversation
-            tangentPath.forEach(t => {
-              contextMessages.push({ role: "user" as const, content: t.content });
-            });
-
-            // Add the new user tangent
-            contextMessages.push({ role: "user" as const, content });
-          } else {
-            shouldGenerateAiReply = false;
           }
-        } else {
-          // This is a new tangent - just use the highlighted text and user's tangent
-          console.log('New tangent on:', highlightedText);
-          contextMessages = [
+          return null;
+        };
+
+        const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
+        if (tangentPath) {
+          const targetTangent = tangentPath[tangentPath.length - 1];
+          const contextMessages = [
             { role: "assistant" as const, content: message.content },
-            { role: "user" as const, content: `Regarding this part of your message: "${highlightedText}"\n\n${content}` }
+            { role: "user" as const, content: `Context: "${targetTangent.highlighted_text}"` },
+            ...targetTangent.conversation.map(m => ({ role: m.role, content: m.content }))
           ];
+
+          let aiContent = "";
+          const aiMessageId = `ai-${Date.now()}`;
+
+          await streamChat(
+            contextMessages,
+            (chunk) => {
+              aiContent += chunk;
+              
+              setConversations(prev => prev.map(conv => {
+                if (conv.id !== activeConvId) return conv;
+                
+                return {
+                  ...conv,
+                  messages: conv.messages.map(msg => {
+                    if (msg.id !== messageId) return msg;
+                    
+                    const updateTangentConversation = (tangents: Tangent[]): Tangent[] => {
+                      return tangents.map(t => {
+                        if (t.id === parentTangentId) {
+                          const existingAi = t.conversation.find(m => m.id === aiMessageId);
+                          if (existingAi) {
+                            return {
+                              ...t,
+                              conversation: t.conversation.map(m =>
+                                m.id === aiMessageId ? { ...m, content: aiContent } : m
+                              )
+                            };
+                          } else {
+                            return {
+                              ...t,
+                              conversation: [
+                                ...t.conversation,
+                                {
+                                  id: aiMessageId,
+                                  content: aiContent,
+                                  role: "assistant" as const,
+                                  created_at: new Date().toISOString()
+                                }
+                              ]
+                            };
+                          }
+                        }
+                        if (t.sub_tangents && t.sub_tangents.length > 0) {
+                          return {
+                            ...t,
+                            sub_tangents: updateTangentConversation(t.sub_tangents)
+                          };
+                        }
+                        return t;
+                      });
+                    };
+                    
+                    return {
+                      ...msg,
+                      tangents: updateTangentConversation(msg.tangents || [])
+                    };
+                  })
+                };
+              }));
+            },
+            () => console.log("AI reply completed")
+          );
         }
       }
+      return;
     }
 
-    // Create and add the user's tangent
+    // This is a new tangent - create it with initial conversation
     const newTangent: Tangent = {
       id: Date.now().toString(),
       highlighted_text: highlightedText,
-      content,
+      conversation: [
+        {
+          id: Date.now().toString(),
+          content,
+          role: "user",
+          created_at: new Date().toISOString()
+        }
+      ],
       created_at: new Date().toISOString(),
-      parent_tangent_id: parentTangentId,
-      replies: []
+      sub_tangents: []
     };
 
     setConversations(prev => prev.map(conv => {
@@ -155,46 +249,23 @@ const Index = () => {
         messages: conv.messages.map(msg => {
           if (msg.id !== messageId) return msg;
           
-          // If this is a top-level tangent (no parent)
-          if (!parentTangentId) {
-            return {
-              ...msg,
-              tangents: [...(msg.tangents || []), newTangent]
-            };
-          }
-          
-          // If this is a reply to another tangent, nest it
-          const addReplyToTangent = (tangents: Tangent[]): Tangent[] => {
-            return tangents.map(t => {
-              if (t.id === parentTangentId) {
-                return {
-                  ...t,
-                  replies: [...(t.replies || []), newTangent]
-                };
-              }
-              if (t.replies && t.replies.length > 0) {
-                return {
-                  ...t,
-                  replies: addReplyToTangent(t.replies)
-                };
-              }
-              return t;
-            });
-          };
-          
           return {
             ...msg,
-            tangents: addReplyToTangent(msg.tangents || [])
+            tangents: [...(msg.tangents || []), newTangent]
           };
         })
       };
     }));
 
-    // Generate AI response if needed
-    if (shouldGenerateAiReply) {
-      console.log('Generating AI reply with context:', contextMessages);
+    // Generate AI response for new tangent if content provided
+    if (content.trim()) {
+      const contextMessages = [
+        { role: "assistant" as const, content: message.content },
+        { role: "user" as const, content: `Regarding: "${highlightedText}"\n\n${content}` }
+      ];
+
       let aiContent = "";
-      const aiTangentId = `ai-${Date.now()}`;
+      const aiMessageId = `ai-${Date.now()}`;
 
       await streamChat(
         contextMessages,
@@ -209,88 +280,41 @@ const Index = () => {
               messages: conv.messages.map(msg => {
                 if (msg.id !== messageId) return msg;
                 
-                // If this is a reply (has parent), nest under the user's tangent
-                // Otherwise, add as a sibling at the same level
-                if (parentTangentId) {
-                  const addOrUpdateAiReply = (tangents: Tangent[]): Tangent[] => {
-                    return tangents.map(t => {
-                      if (t.id === newTangent.id) {
-                        const existingAiReply = t.replies?.find(r => r.id === aiTangentId);
-                        if (existingAiReply) {
-                          return {
-                            ...t,
-                            replies: t.replies?.map(r => 
-                              r.id === aiTangentId 
-                                ? { ...r, content: aiContent }
-                                : r
-                            )
-                          };
-                        } else {
-                          return {
-                            ...t,
-                            replies: [
-                              ...(t.replies || []),
-                              {
-                                id: aiTangentId,
-                                highlighted_text: highlightedText,
-                                content: aiContent,
-                                created_at: new Date().toISOString(),
-                                parent_tangent_id: newTangent.id,
-                                replies: []
-                              }
-                            ]
-                          };
-                        }
-                      }
-                      if (t.replies && t.replies.length > 0) {
+                return {
+                  ...msg,
+                  tangents: msg.tangents?.map(t => {
+                    if (t.id === newTangent.id) {
+                      const existingAi = t.conversation.find(m => m.id === aiMessageId);
+                      if (existingAi) {
                         return {
                           ...t,
-                          replies: addOrUpdateAiReply(t.replies)
+                          conversation: t.conversation.map(m =>
+                            m.id === aiMessageId ? { ...m, content: aiContent } : m
+                          )
+                        };
+                      } else {
+                        return {
+                          ...t,
+                          conversation: [
+                            ...t.conversation,
+                            {
+                              id: aiMessageId,
+                              content: aiContent,
+                              role: "assistant" as const,
+                              created_at: new Date().toISOString()
+                            }
+                          ]
                         };
                       }
-                      return t;
-                    });
-                  };
-                  
-                  return {
-                    ...msg,
-                    tangents: addOrUpdateAiReply(msg.tangents || [])
-                  };
-                } else {
-                  // Add AI tangent as a sibling at the same level
-                  const existingAiTangent = msg.tangents?.find(t => t.id === aiTangentId);
-                  if (existingAiTangent) {
-                    return {
-                      ...msg,
-                      tangents: msg.tangents?.map(t => 
-                        t.id === aiTangentId 
-                          ? { ...t, content: aiContent }
-                          : t
-                      )
-                    };
-                  } else {
-                    return {
-                      ...msg,
-                      tangents: [
-                        ...(msg.tangents || []),
-                        {
-                          id: aiTangentId,
-                          highlighted_text: highlightedText,
-                          content: aiContent,
-                          created_at: new Date().toISOString(),
-                          replies: []
-                        }
-                      ]
-                    };
-                  }
-                }
+                    }
+                    return t;
+                  })
+                };
               })
             };
           }));
         },
-        () => {
-          console.log("AI tangent reply completed");
-        }
+        () => console.log("AI reply completed")
       );
     }
   };

@@ -4,12 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+interface TangentMessage {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  created_at: string;
+}
+
 interface Tangent {
   id: string;
   highlighted_text: string;
-  content: string;
+  conversation: TangentMessage[];
   created_at: string;
-  replies?: Tangent[];
+  sub_tangents?: Tangent[];
 }
 
 interface TangentThreadProps {
@@ -60,8 +67,22 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
             
             {!isCollapsed && (
               <>
-                <div className="text-sm">
-                  {tangent.content}
+                {/* Display conversation */}
+                <div className="space-y-2">
+                  {tangent.conversation.map((msg) => (
+                    <div 
+                      key={msg.id}
+                      className={cn(
+                        "text-sm p-2 rounded",
+                        msg.role === "user" ? "bg-muted/50" : "bg-muted/20"
+                      )}
+                    >
+                      <div className="font-medium text-xs text-muted-foreground mb-1">
+                        {msg.role === "user" ? "You" : "AI"}
+                      </div>
+                      {msg.content}
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="flex items-center gap-2 pt-1">
@@ -82,17 +103,14 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
                 {isReplying && (
                   <div className="pt-2 space-y-2">
                     <Textarea
-                      placeholder="Write a tangent reply..."
+                      placeholder="Continue the conversation..."
                       value={replyContent}
                       onChange={(e) => setReplyContent(e.target.value)}
                       className="min-h-[80px]"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => {
-                        console.log('Post Reply button clicked! tangent.id:', tangent.id, 'content:', replyContent);
-                        handleReply();
-                      }}>
-                        Post Reply
+                      <Button size="sm" onClick={handleReply}>
+                        Send
                       </Button>
                       <Button 
                         size="sm" 
@@ -112,13 +130,13 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
           </div>
         </div>
 
-        {/* Nested replies */}
-        {!isCollapsed && tangent.replies && tangent.replies.length > 0 && (
+        {/* Nested sub-tangents */}
+        {!isCollapsed && tangent.sub_tangents && tangent.sub_tangents.length > 0 && (
           <div className="space-y-1">
-            {tangent.replies.map((reply) => (
+            {tangent.sub_tangents.map((subTangent) => (
               <TangentThread
-                key={reply.id}
-                tangent={reply}
+                key={subTangent.id}
+                tangent={subTangent}
                 level={level + 1}
                 onReply={onReply}
               />

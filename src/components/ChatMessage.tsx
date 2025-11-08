@@ -7,12 +7,19 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { TangentThread } from "@/components/TangentThread";
 import { TangentSelector } from "@/components/TangentSelector";
 
+interface TangentMessage {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  created_at: string;
+}
+
 interface Tangent {
   id: string;
   highlighted_text: string;
-  content: string;
+  conversation: TangentMessage[];
   created_at: string;
-  replies?: Tangent[];
+  sub_tangents?: Tangent[];
 }
 
 interface ChatMessageProps {
@@ -68,8 +75,8 @@ export const ChatMessage = ({
       const findTangent = (tangents: Tangent[]): Tangent | undefined => {
         for (const t of tangents) {
           if (t.id === tangentId) return t;
-          if (t.replies) {
-            const found = findTangent(t.replies);
+          if (t.sub_tangents) {
+            const found = findTangent(t.sub_tangents);
             if (found) return found;
           }
         }
