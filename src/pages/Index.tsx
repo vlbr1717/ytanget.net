@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { useChatStream } from "@/hooks/useChatStream";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
+import { User, Session } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TangentMessage {
   id: string;
@@ -40,19 +51,137 @@ const Index = () => {
   ]);
   const [activeConvId, setActiveConvId] = useState<string>("1");
   const [sidebarVisible, setSidebarVisible] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
   const messages = activeConversation?.messages || [];
 
+  // Auth state management
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load conversations from database for logged-in users
+  useEffect(() => {
+    if (user) {
+      loadConversationsFromDB();
+    }
+  }, [user]);
+
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const handleNewChat = () => {
+  const loadConversationsFromDB = async () => {
+    if (!user) return;
+
+    try {
+      const { data: convData, error: convError } = await supabase
+        .from("conversations")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (convError) throw convError;
+
+      if (convData && convData.length > 0) {
+        const conversationsWithMessages = await Promise.all(
+          convData.map(async (conv) => {
+            const { data: msgData, error: msgError } = await supabase
+              .from("messages")
+              .select("*")
+              .eq("conversation_id", conv.id)
+              .order("created_at", { ascending: true });
+
+            if (msgError) throw msgError;
+
+            return {
+              id: conv.id,
+              title: conv.title,
+              messages: msgData?.map(msg => ({
+                id: msg.id,
+                role: msg.role as "user" | "assistant",
+                content: msg.content,
+                tangents: []
+              })) || []
+            };
+          })
+        );
+
+        setConversations(conversationsWithMessages);
+        setActiveConvId(conversationsWithMessages[0]?.id || "1");
+      }
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+    }
+  };
+
+  const saveConversationToDB = async (conversation: Conversation) => {
+    if (!user) return;
+
+    try {
+      const { error: convError } = await supabase
+        .from("conversations")
+        .upsert({
+          id: conversation.id,
+          user_id: user.id,
+          title: conversation.title,
+          updated_at: new Date().toISOString()
+        });
+
+      if (convError) throw convError;
+
+      for (const msg of conversation.messages) {
+        if (msg.id) {
+          const { error: msgError } = await supabase
+            .from("messages")
+            .upsert({
+              id: msg.id,
+              conversation_id: conversation.id,
+              role: msg.role,
+              content: msg.content
+            });
+
+          if (msgError) throw msgError;
+        }
+      }
+    } catch (error) {
+      console.error("Error saving conversation:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setConversations([{ id: "1", title: "New Chat", messages: [] }]);
+    setActiveConvId("1");
+    toast({
+      title: "Logged out",
+      description: "You're now in guest mode. Chats won't be saved.",
+    });
+  };
+
+  const handleNewChat = async () => {
     // Check if there's already an empty conversation
     const emptyConv = conversations.find(c => c.messages.length === 0);
     
@@ -61,16 +190,34 @@ const Index = () => {
       setActiveConvId(emptyConv.id);
     } else {
       // Create a new conversation only if none are empty
-      const newId = Date.now().toString();
-      setConversations(prev => [
-        ...prev,
-        { id: newId, title: "New Chat", messages: [] }
-      ]);
+      const newId = user ? crypto.randomUUID() : Date.now().toString();
+      const newConv = { id: newId, title: "New Chat", messages: [] };
+      
+      setConversations(prev => [...prev, newConv]);
       setActiveConvId(newId);
+      
+      // Save to database if user is logged in
+      if (user) {
+        await saveConversationToDB(newConv);
+      }
     }
   };
 
-  const handleDeleteChat = (id: string) => {
+  const handleDeleteChat = async (id: string) => {
+    // Delete from database if user is logged in
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from("conversations")
+          .delete()
+          .eq("id", id);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error("Error deleting conversation:", error);
+      }
+    }
+
     setConversations(prev => {
       const updated = prev.filter(c => c.id !== id);
       if (updated.length === 0) {
@@ -566,6 +713,13 @@ const Index = () => {
       },
       () => {
         console.log("Stream completed");
+        // Save to database if user is logged in
+        if (user) {
+          const updatedConv = conversations.find(c => c.id === activeConvId);
+          if (updatedConv) {
+            setTimeout(() => saveConversationToDB(updatedConv), 500);
+          }
+        }
       }
     );
   };
@@ -608,6 +762,49 @@ const Index = () => {
       )}
       
       <div className="flex-1 flex flex-col">
+        <div className="flex items-center justify-end p-4 border-b border-border">
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2"
+                  >
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  {user.email}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleLogout}>
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Guest Mode</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/auth")}
+              >
+                Sign In to Save Chats
+              </Button>
+            </div>
+          )}
+        </div>
+
         <ScrollArea className="flex-1" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
