@@ -52,12 +52,21 @@ const Index = () => {
   }, [messages]);
 
   const handleNewChat = () => {
-    const newId = Date.now().toString();
-    setConversations(prev => [
-      ...prev,
-      { id: newId, title: "New Chat", messages: [] }
-    ]);
-    setActiveConvId(newId);
+    // Check if there's already an empty conversation
+    const emptyConv = conversations.find(c => c.messages.length === 0);
+    
+    if (emptyConv) {
+      // Just switch to the existing empty conversation
+      setActiveConvId(emptyConv.id);
+    } else {
+      // Create a new conversation only if none are empty
+      const newId = Date.now().toString();
+      setConversations(prev => [
+        ...prev,
+        { id: newId, title: "New Chat", messages: [] }
+      ]);
+      setActiveConvId(newId);
+    }
   };
 
   const handleDeleteChat = (id: string) => {
