@@ -79,11 +79,14 @@ const Index = () => {
     content: string,
     parentTangentId?: string
   ) => {
+    console.log('handleCreateTangent called:', { messageId, content, parentTangentId });
+    
     // Build AI context BEFORE updating state if this is a reply with content
     let shouldGenerateAiReply = false;
     let contextMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
     
     if (content.trim() && parentTangentId) {
+      console.log('Checking if should generate AI reply...');
       const message = messages.find(m => m.id === messageId);
       if (message) {
         // Build context from the tangent thread
@@ -100,8 +103,10 @@ const Index = () => {
         };
 
         const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
+        console.log('Found tangent path:', tangentPath);
         if (tangentPath) {
           shouldGenerateAiReply = true;
+          console.log('Will generate AI reply!');
           
           // Build conversation context
           contextMessages = [
@@ -175,6 +180,7 @@ const Index = () => {
 
     // Generate AI response if needed
     if (shouldGenerateAiReply) {
+      console.log('Generating AI reply with context:', contextMessages);
       let aiContent = "";
       const aiTangentId = `ai-${Date.now()}`;
 
