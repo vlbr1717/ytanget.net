@@ -1,6 +1,12 @@
-import { Plus, MessageSquare, Trash2 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface Conversation {
   id: string;
@@ -27,6 +34,9 @@ interface ChatSidebarProps {
 }
 
 export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat }: ChatSidebarProps) => {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [convToDelete, setConvToDelete] = useState<string | null>(null);
+
   return (
     <div className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full">
       <div className="p-4 border-b border-sidebar-border">
@@ -53,37 +63,57 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
                 <span className="truncate">{conv.title}</span>
               </Button>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete "{conv.title}" and all its messages. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => onDeleteChat(conv.id)}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      setConvToDelete(conv.id);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
+          
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this conversation and all its messages. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (convToDelete) {
+                      onDeleteChat(convToDelete);
+                      setConvToDelete(null);
+                    }
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </ScrollArea>
     </div>
