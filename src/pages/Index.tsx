@@ -142,6 +142,9 @@ const Index = () => {
   const saveConversationToDB = async (conversation: Conversation) => {
     if (!user) return;
 
+    const isValidUUID = (str: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+
     setSaveStatus("saving");
     try {
       const { error: convError } = await supabase
@@ -156,7 +159,7 @@ const Index = () => {
       if (convError) throw convError;
 
       for (const msg of conversation.messages) {
-        if (msg.id) {
+        if (msg.id && isValidUUID(msg.id)) {
           const { error: msgError } = await supabase
             .from("messages")
             .upsert({
@@ -165,8 +168,17 @@ const Index = () => {
               role: msg.role,
               content: msg.content
             });
-
           if (msgError) throw msgError;
+        } else {
+          // Insert and let the DB generate a UUID id
+          const { error: insertErr } = await supabase
+            .from("messages")
+            .insert({
+              conversation_id: conversation.id,
+              role: msg.role,
+              content: msg.content
+            });
+          if (insertErr) throw insertErr;
         }
       }
       
@@ -196,8 +208,8 @@ const Index = () => {
       // Just switch to the existing empty conversation
       setActiveConvId(emptyConv.id);
     } else {
-      // Create a new conversation only if none are empty
-      const newId = user ? crypto.randomUUID() : Date.now().toString();
+      // Always generate a UUID for new conversations to be DB-friendly
+      const newId = crypto.randomUUID();
       const newConv = { id: newId, title: "New Chat", messages: [] };
       
       setConversations(prev => [...prev, newConv]);
@@ -673,7 +685,7 @@ const Index = () => {
     const userMessage: Message = { 
       role: "user", 
       content,
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
       tangents: []
     };
     
@@ -685,7 +697,7 @@ const Index = () => {
 
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
-    const assistantMessageId = `assistant-${Date.now()}`;
+    const assistantMessageId = crypto.randomUUID();
     let finalConversation: Conversation | null = null;
 
     await streamChat(
@@ -727,7 +739,17 @@ const Index = () => {
         console.log("Stream completed");
         // Save to database if user is logged in
         if (user && finalConversation) {
-          saveConversationToDB(finalConversation);
+          const isValidUUID = (str: string) =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+          let convToSave = finalConversation;
+          if (!isValidUUID(convToSave.id)) {
+            const newId = crypto.randomUUID();
+            // Update state to use the new UUID id
+            setConversations(prev => prev.map(c => c.id === convToSave.id ? { ...c, id: newId } : c));
+            setActiveConvId(newId);
+            convToSave = { ...convToSave, id: newId };
+          }
+          saveConversationToDB(convToSave);
         }
       }
     );
