@@ -24,11 +24,9 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
   const [replyContent, setReplyContent] = useState("");
 
   const handleReply = () => {
-    if (replyContent.trim()) {
-      onReply(tangent.id, replyContent);
-      setReplyContent("");
-      setIsReplying(false);
-    }
+    onReply(tangent.id, replyContent);
+    setReplyContent("");
+    setIsReplying(false);
   };
 
   return (

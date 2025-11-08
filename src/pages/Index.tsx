@@ -73,7 +73,7 @@ const Index = () => {
     }
   };
 
-  const handleCreateTangent = (
+  const handleCreateTangent = async (
     messageId: string, 
     highlightedText: string, 
     content: string,
@@ -130,6 +130,112 @@ const Index = () => {
         })
       };
     }));
+
+    // If user posted content in a tangent reply, generate AI response
+    if (content.trim() && parentTangentId) {
+      const message = messages.find(m => m.id === messageId);
+      if (!message) return;
+
+      // Build context from the tangent thread
+      const buildTangentContext = (tangents: Tangent[], targetId: string, path: Tangent[] = []): Tangent[] | null => {
+        for (const t of tangents) {
+          const currentPath = [...path, t];
+          if (t.id === targetId) return currentPath;
+          if (t.replies) {
+            const found = buildTangentContext(t.replies, targetId, currentPath);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const tangentPath = buildTangentContext(message.tangents || [], parentTangentId);
+      if (!tangentPath) return;
+
+      // Build conversation context
+      const contextMessages = [
+        { role: "assistant" as const, content: message.content },
+        { role: "user" as const, content: `Context: Original highlighted text: "${tangentPath[0].highlighted_text}"` }
+      ];
+
+      // Add all tangents in the thread as conversation
+      tangentPath.forEach(t => {
+        contextMessages.push({ role: "user" as const, content: t.content });
+      });
+
+      // Add the new user tangent
+      contextMessages.push({ role: "user" as const, content });
+
+      // Stream AI response as a tangent reply
+      let aiContent = "";
+      const aiTangentId = `ai-${Date.now()}`;
+
+      await streamChat(
+        contextMessages,
+        (chunk) => {
+          aiContent += chunk;
+          
+          setConversations(prev => prev.map(conv => {
+            if (conv.id !== activeConvId) return conv;
+            
+            return {
+              ...conv,
+              messages: conv.messages.map(msg => {
+                if (msg.id !== messageId) return msg;
+                
+                const addOrUpdateAiReply = (tangents: Tangent[]): Tangent[] => {
+                  return tangents.map(t => {
+                    if (t.id === newTangent.id) {
+                      const existingAiReply = t.replies?.find(r => r.id === aiTangentId);
+                      if (existingAiReply) {
+                        return {
+                          ...t,
+                          replies: t.replies?.map(r => 
+                            r.id === aiTangentId 
+                              ? { ...r, content: aiContent }
+                              : r
+                          )
+                        };
+                      } else {
+                        return {
+                          ...t,
+                          replies: [
+                            ...(t.replies || []),
+                            {
+                              id: aiTangentId,
+                              highlighted_text: highlightedText,
+                              content: aiContent,
+                              created_at: new Date().toISOString(),
+                              parent_tangent_id: newTangent.id,
+                              replies: []
+                            }
+                          ]
+                        };
+                      }
+                    }
+                    if (t.replies && t.replies.length > 0) {
+                      return {
+                        ...t,
+                        replies: addOrUpdateAiReply(t.replies)
+                      };
+                    }
+                    return t;
+                  });
+                };
+                
+                return {
+                  ...msg,
+                  tangents: addOrUpdateAiReply(msg.tangents || [])
+                };
+              })
+            };
+          }));
+        },
+        () => {
+          console.log("AI tangent reply completed");
+        }
+      );
+    }
   };
 
   const handleSendMessage = async (content: string) => {
