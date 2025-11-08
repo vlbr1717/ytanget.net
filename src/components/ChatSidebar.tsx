@@ -51,7 +51,16 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
 
   return (
     <div className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full">
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-sidebar-border space-y-4">
+        <div className="flex items-center gap-3">
+          <img 
+            src="/favicon.svg" 
+            alt="Tangent logo" 
+            className="w-8 h-8"
+          />
+          <h1 className="text-2xl font-semibold">Tangent</h1>
+        </div>
+        
         <Button 
           onClick={onNewChat}
           className="w-full justify-start gap-2"

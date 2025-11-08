@@ -543,18 +543,6 @@ const Index = () => {
       />
       
       <div className="flex-1 flex flex-col">
-        {/* Header with logo */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center px-6 py-4">
-            <img 
-              src="/favicon.svg" 
-              alt="ytangent logo" 
-              className="w-8 h-8"
-            />
-            <h1 className="text-2xl font-semibold ml-3">Tangent</h1>
-          </div>
-        </div>
-
         <ScrollArea className="flex-1" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
