@@ -48,22 +48,15 @@ serve(async (req) => {
     
     // Extract relevant information from top results
     const results = data.web?.results || [];
-    let information = '';
-    
-    if (results.length > 0) {
-      information = results
-        .slice(0, 3)
-        .map((result: any, index: number) => 
-          `${index + 1}. ${result.title}\n${result.description || ''}\nSource: ${result.url}`
-        )
-        .join('\n\n');
-    } else {
-      information = 'No relevant information found for this query.';
-    }
+    const searchResults = results.slice(0, 3).map((result: any) => ({
+      title: result.title,
+      url: result.url,
+      description: result.description || ''
+    }));
 
     console.log('Successfully fetched search results');
     return new Response(
-      JSON.stringify({ information }),
+      JSON.stringify({ results: searchResults }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

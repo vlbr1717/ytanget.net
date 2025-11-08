@@ -32,6 +32,7 @@ export const TangentSelector = ({
   const [tangentContent, setTangentContent] = useState("");
   const [isOpen, setIsOpen] = useState(true);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
+  const [searchResults, setSearchResults] = useState<Array<{title: string; url: string; description: string}>>([]);
   const { toast } = useToast();
 
   const handleCreate = () => {
@@ -66,11 +67,15 @@ export const TangentSelector = ({
 
       if (error) throw error;
 
-      if (data?.information) {
-        const currentContent = tangentContent ? tangentContent + "\n\n" : "";
-        setTangentContent(currentContent + "**Live Information:**\n" + data.information);
+      if (data?.results && data.results.length > 0) {
+        setSearchResults(data.results);
         toast({
-          description: "Added current information to your tangent",
+          description: "Found search results",
+        });
+      } else {
+        toast({
+          description: "No results found",
+          variant: "destructive",
         });
       }
     } catch (err) {
@@ -154,6 +159,30 @@ export const TangentSelector = ({
             </div>
           </div>
           
+          {searchResults.length > 0 && (
+            <div>
+              <label className="text-sm font-medium">Search Results:</label>
+              <div className="mt-1 space-y-2">
+                {searchResults.map((result, index) => (
+                  <a
+                    key={index}
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 bg-muted hover:bg-muted/80 rounded text-sm transition-colors"
+                  >
+                    <div className="font-medium text-foreground line-clamp-1">
+                      {result.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                      {result.url}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-medium">Your tangent:</label>
             <Textarea
