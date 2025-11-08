@@ -58,13 +58,70 @@ export const ChatMessage = ({
   };
 
   // Process content to replace highlighted text with unique markdown-safe markers
-  const processedContent = tangents.reduce((text, tangent, index) => {
-    const shortenedText = shortenText(tangent.highlighted_text);
-    // Use a marker that won't be parsed by markdown/LaTeX
-    const marker = `<TANGENT_LINK_${index}>${shortenedText}</TANGENT_LINK_${index}>`;
-    const regex = new RegExp(escapeRegex(tangent.highlighted_text), 'g');
-    return text.replace(regex, marker);
-  }, content);
+  // But only in plain text, not in LaTeX or code blocks
+  const processedContent = (() => {
+    let result = content;
+    
+    // Find all LaTeX regions (inline $...$ and block $$...$$) and code blocks
+    const protectedRegions: Array<{start: number, end: number}> = [];
+    
+    // Find block math $$...$$
+    const blockMathRegex = /\$\$[\s\S]*?\$\$/g;
+    let match;
+    while ((match = blockMathRegex.exec(content)) !== null) {
+      protectedRegions.push({start: match.index, end: match.index + match[0].length});
+    }
+    
+    // Find inline math $...$
+    const inlineMathRegex = /\$[^\$\n]+?\$/g;
+    while ((match = inlineMathRegex.exec(content)) !== null) {
+      protectedRegions.push({start: match.index, end: match.index + match[0].length});
+    }
+    
+    // Find fenced code blocks ```...```
+    const fencedCodeRegex = /```[\s\S]*?```/g;
+    while ((match = fencedCodeRegex.exec(content)) !== null) {
+      protectedRegions.push({start: match.index, end: match.index + match[0].length});
+    }
+    
+    // Find inline code `...`
+    const inlineCodeRegex = /`[^`\n]+?`/g;
+    while ((match = inlineCodeRegex.exec(content)) !== null) {
+      protectedRegions.push({start: match.index, end: match.index + match[0].length});
+    }
+    
+    // Sort regions by start position
+    protectedRegions.sort((a, b) => a.start - b.start);
+    
+    // Check if a position is within a protected region
+    const isProtected = (pos: number) => {
+      return protectedRegions.some(region => pos >= region.start && pos < region.end);
+    };
+    
+    // Apply tangent markers only to unprotected text
+    tangents.forEach((tangent, index) => {
+      const shortenedText = shortenText(tangent.highlighted_text);
+      const marker = `<TANGENT_LINK_${index}>${shortenedText}</TANGENT_LINK_${index}>`;
+      const searchText = tangent.highlighted_text;
+      
+      let newResult = '';
+      let lastIndex = 0;
+      const regex = new RegExp(escapeRegex(searchText), 'g');
+      
+      while ((match = regex.exec(result)) !== null) {
+        // Check if this match is in a protected region
+        if (!isProtected(match.index)) {
+          newResult += result.substring(lastIndex, match.index);
+          newResult += marker;
+          lastIndex = match.index + match[0].length;
+        }
+      }
+      newResult += result.substring(lastIndex);
+      result = newResult || result;
+    });
+    
+    return result;
+  })();
 
   // Function to convert tangent markers to clickable buttons
   const renderTextWithTangents = (text: string) => {
