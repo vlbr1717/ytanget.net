@@ -82,7 +82,7 @@ export const TangentSelector = ({
 
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreate}>
-              Create
+              Send
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Cancel
