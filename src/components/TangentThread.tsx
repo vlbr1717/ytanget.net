@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +29,23 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState("");
+  const tangentRef = useRef<HTMLDivElement>(null);
+
+  const shortenText = (text: string, maxLength: number = 50) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + "...";
+  };
+
+  const handleJumpToTangent = () => {
+    if (tangentRef.current) {
+      tangentRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Flash highlight effect
+      tangentRef.current.classList.add("animate-pulse");
+      setTimeout(() => {
+        tangentRef.current?.classList.remove("animate-pulse");
+      }, 1000);
+    }
+  };
 
   const handleReply = () => {
     console.log('TangentThread handleReply called:', { tangentId: tangent.id, content: replyContent });
@@ -39,8 +56,9 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
 
   return (
     <div 
+      ref={tangentRef}
       className={cn(
-        "border-l-2 border-muted pl-4 py-2",
+        "border-l-2 border-muted pl-4 py-2 transition-all",
         level > 0 && "ml-4"
       )}
     >
@@ -61,9 +79,12 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
           </Button>
           
           <div className="flex-1 space-y-1">
-            <div className="text-sm text-muted-foreground italic">
-              "{tangent.highlighted_text}"
-            </div>
+            <button
+              onClick={handleJumpToTangent}
+              className="text-sm text-muted-foreground hover:text-foreground italic transition-colors cursor-pointer text-left"
+            >
+              "{shortenText(tangent.highlighted_text)}"
+            </button>
             
             {!isCollapsed && (
               <>
