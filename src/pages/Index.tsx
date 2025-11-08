@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Cloud, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,7 @@ const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -140,6 +142,7 @@ const Index = () => {
   const saveConversationToDB = async (conversation: Conversation) => {
     if (!user) return;
 
+    setSaveStatus("saving");
     try {
       const { error: convError } = await supabase
         .from("conversations")
@@ -166,8 +169,12 @@ const Index = () => {
           if (msgError) throw msgError;
         }
       }
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
       console.error("Error saving conversation:", error);
+      setSaveStatus("idle");
     }
   };
 
@@ -764,7 +771,26 @@ const Index = () => {
       )}
       
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center justify-end p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            {user && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                {saveStatus === "saving" && (
+                  <>
+                    <Cloud className="w-4 h-4 animate-pulse" />
+                    <span>Saving...</span>
+                  </>
+                )}
+                {saveStatus === "saved" && (
+                  <>
+                    <Check className="w-4 h-4 text-green-600" />
+                    <span className="text-green-600">Saved</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
