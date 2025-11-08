@@ -18,6 +18,7 @@ const Index = () => {
     updateConversationTitle,
     addMessage,
     updateLastMessage,
+    addTangent,
   } = useConversations();
 
   useEffect(() => {
@@ -103,7 +104,18 @@ const Index = () => {
           ) : (
             <div>
               {messages.map((msg, i) => (
-                <ChatMessage key={i} role={msg.role} content={msg.content} />
+                <ChatMessage
+                  key={i}
+                  role={msg.role}
+                  content={msg.content}
+                  tangents={msg.tangents}
+                  messageIndex={i}
+                  onAddTangent={(messageIndex, selectedText, startPos, endPos, content, parentTangentId) => {
+                    if (activeConvId) {
+                      addTangent(activeConvId, messageIndex, selectedText, startPos, endPos, content, parentTangentId);
+                    }
+                  }}
+                />
               ))}
             </div>
           )}

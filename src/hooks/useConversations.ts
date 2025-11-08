@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 
+import { TangentData } from "@/components/Tangent";
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  tangents?: TangentData[];
 }
 
 export interface Conversation {
@@ -92,6 +95,53 @@ export const useConversations = () => {
     saveConversations(updated);
   };
 
+  const addTangent = (convId: string, messageIndex: number, selectedText: string, startPos: number, endPos: number, content: string, parentTangentId?: string) => {
+    const newTangent: TangentData = {
+      id: crypto.randomUUID(),
+      content,
+      selectedText,
+      startPos,
+      endPos,
+      replies: [],
+      createdAt: Date.now(),
+    };
+
+    const updated = conversations.map((conv) => {
+      if (conv.id !== convId) return conv;
+      
+      const msgs = [...conv.messages];
+      const msg = msgs[messageIndex];
+      
+      if (!msg) return conv;
+
+      if (!parentTangentId) {
+        // Top-level tangent
+        const tangents = msg.tangents || [];
+        msgs[messageIndex] = { ...msg, tangents: [...tangents, newTangent] };
+      } else {
+        // Reply to existing tangent
+        const addReply = (tangents: TangentData[]): TangentData[] => {
+          return tangents.map((t) => {
+            if (t.id === parentTangentId) {
+              return { ...t, replies: [...t.replies, newTangent] };
+            }
+            if (t.replies.length > 0) {
+              return { ...t, replies: addReply(t.replies) };
+            }
+            return t;
+          });
+        };
+        
+        const tangents = msg.tangents || [];
+        msgs[messageIndex] = { ...msg, tangents: addReply(tangents) };
+      }
+
+      return { ...conv, messages: msgs };
+    });
+    
+    saveConversations(updated);
+  };
+
   return {
     conversations,
     loading,
@@ -99,5 +149,6 @@ export const useConversations = () => {
     updateConversationTitle,
     addMessage,
     updateLastMessage,
+    addTangent,
   };
 };
