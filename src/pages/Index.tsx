@@ -575,7 +575,7 @@ const Index = () => {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-4">
-                <p className="text-muted-foreground">Start a conversation</p>
+                <p className="text-muted-foreground text-4xl">Start a conversation</p>
               </div>
             </div>
           ) : (
