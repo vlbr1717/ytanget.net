@@ -57,6 +57,7 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
   return (
     <div 
       ref={tangentRef}
+      id={`tangent-${tangent.id}`}
       className={cn(
         "border-l-2 border-muted pl-4 py-2 transition-all",
         level > 0 && "ml-4"
@@ -79,12 +80,18 @@ export const TangentThread = ({ tangent, level = 0, onReply }: TangentThreadProp
           </Button>
           
           <div className="flex-1 space-y-1">
-            <button
-              onClick={handleJumpToTangent}
-              className="text-sm text-muted-foreground hover:text-foreground italic transition-colors cursor-pointer text-left"
-            >
-              "{shortenText(tangent.highlighted_text)}"
-            </button>
+            {isCollapsed ? (
+              <button
+                onClick={() => setIsCollapsed(false)}
+                className="text-sm text-muted-foreground hover:text-foreground italic transition-colors cursor-pointer text-left"
+              >
+                "{shortenText(tangent.highlighted_text)}"
+              </button>
+            ) : (
+              <div className="text-sm bg-muted/30 p-2 rounded italic border-l-2 border-primary/50">
+                "{tangent.highlighted_text}"
+              </div>
+            )}
             
             {!isCollapsed && (
               <>

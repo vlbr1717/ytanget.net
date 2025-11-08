@@ -43,6 +43,23 @@ export const ChatMessage = ({
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Process content to replace highlighted text with tangent links
+  const processedContent = tangents.reduce((text, tangent, index) => {
+    const marker = `[→ tangent ${index + 1}]`;
+    return text.replace(tangent.highlighted_text, marker);
+  }, content);
+
+  const handleTangentLinkClick = (tangentId: string) => {
+    const element = document.getElementById(`tangent-${tangentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.classList.add("animate-pulse");
+      setTimeout(() => {
+        element.classList.remove("animate-pulse");
+      }, 1000);
+    }
+  };
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     const text = selection?.toString().trim();
@@ -133,9 +150,39 @@ export const ChatMessage = ({
                     </code>
                   );
                 },
+                p({ children, ...props }: any) {
+                  // Replace tangent markers with clickable links
+                  const processChildren = (child: any): any => {
+                    if (typeof child === 'string') {
+                      const parts = child.split(/(\[→ tangent \d+\])/g);
+                      return parts.map((part, i) => {
+                        const match = part.match(/\[→ tangent (\d+)\]/);
+                        if (match) {
+                          const tangentIndex = parseInt(match[1]) - 1;
+                          const tangent = tangents[tangentIndex];
+                          if (tangent) {
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => handleTangentLinkClick(tangent.id)}
+                                className="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors cursor-pointer"
+                              >
+                                → tangent {match[1]}
+                              </button>
+                            );
+                          }
+                        }
+                        return part;
+                      });
+                    }
+                    return child;
+                  };
+                  
+                  return <p {...props}>{Array.isArray(children) ? children.map(processChildren) : processChildren(children)}</p>;
+                },
               }}
             >
-              {content}
+              {processedContent}
             </ReactMarkdown>
           </div>
 
