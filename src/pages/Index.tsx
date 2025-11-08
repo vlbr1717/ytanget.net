@@ -19,6 +19,7 @@ const Index = () => {
     addMessage,
     updateLastMessage,
     addTangent,
+    deleteConversation,
   } = useConversations();
 
   useEffect(() => {
@@ -40,6 +41,22 @@ const Index = () => {
     const newId = await createConversation();
     if (newId) {
       setActiveConvId(newId);
+    }
+  };
+
+  const handleDeleteChat = (convId: string) => {
+    const newActiveId = deleteConversation(convId);
+    
+    // If we deleted the active conversation
+    if (convId === activeConvId) {
+      if (newActiveId) {
+        // A new conversation was created
+        setActiveConvId(newActiveId);
+      } else {
+        // Switch to first remaining conversation
+        const remaining = conversations.filter(c => c.id !== convId);
+        setActiveConvId(remaining[0]?.id || null);
+      }
     }
   };
 
@@ -85,6 +102,7 @@ const Index = () => {
         activeId={activeConvId}
         onNewChat={handleNewChat}
         onSelectChat={setActiveConvId}
+        onDeleteChat={handleDeleteChat}
       />
       
       <div className="flex-1 flex flex-col">

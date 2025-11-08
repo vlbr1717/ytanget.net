@@ -95,6 +95,24 @@ export const useConversations = () => {
     saveConversations(updated);
   };
 
+  const deleteConversation = (convId: string) => {
+    const updated = conversations.filter(conv => conv.id !== convId);
+    
+    // If we're deleting all conversations, create a new one
+    if (updated.length === 0) {
+      const newConv: Conversation = {
+        id: crypto.randomUUID(),
+        title: "New Chat",
+        messages: [],
+      };
+      saveConversations([newConv]);
+      return newConv.id;
+    }
+    
+    saveConversations(updated);
+    return null;
+  };
+
   const addTangent = (convId: string, messageIndex: number, selectedText: string, startPos: number, endPos: number, content: string, parentTangentId?: string) => {
     const newTangent: TangentData = {
       id: crypto.randomUUID(),
@@ -150,5 +168,6 @@ export const useConversations = () => {
     addMessage,
     updateLastMessage,
     addTangent,
+    deleteConversation,
   };
 };
