@@ -205,7 +205,7 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent,
             ) : (
               <div className="text-sm bg-muted/30 p-2 rounded border-l-2 border-primary/50 prose prose-sm prose-invert max-w-none">
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
                   rehypePlugins={[rehypeKatex]}
                   components={{
                     code({ node, inline, className, children, ...props }: any) {
@@ -254,7 +254,7 @@ export const TangentThread = ({ tangent, level = 0, onReply, onCreateSubTangent,
                       </div>
                       <div className="prose prose-sm prose-invert max-w-none">
                         <ReactMarkdown
-                          remarkPlugins={[remarkMath]}
+                          remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
                             code({ node, inline, className, children, ...props }: any) {

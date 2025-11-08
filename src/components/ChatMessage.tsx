@@ -239,7 +239,7 @@ export const ChatMessage = ({
             onMouseUp={handleTextSelection}
           >
             <ReactMarkdown
-              remarkPlugins={[remarkMath]}
+              remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
               rehypePlugins={[rehypeKatex]}
               components={{
                 code({ node, inline, className, children, ...props }: any) {

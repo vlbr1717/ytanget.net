@@ -131,7 +131,7 @@ export const TangentSelector = ({
             </div>
             <div className="text-sm text-muted-foreground italic p-2 bg-muted rounded prose prose-sm prose-invert max-w-none">
               <ReactMarkdown
-                remarkPlugins={[remarkMath]}
+                remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
                 rehypePlugins={[rehypeKatex]}
                 components={{
                   code({ node, inline, className, children, ...props }: any) {
