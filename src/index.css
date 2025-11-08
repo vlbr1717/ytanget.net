@@ -111,5 +111,11 @@ All colors MUST be HSL.
   .katex-display {
     text-align: center !important;
     margin: 2rem 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  
+  .katex-display > .katex {
+    text-align: center !important;
   }
 }
