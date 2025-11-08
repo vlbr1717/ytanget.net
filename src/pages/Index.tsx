@@ -679,6 +679,7 @@ const Index = () => {
     let assistantContent = "";
     const allMessages = [...messages, userMessage];
     const assistantMessageId = `assistant-${Date.now()}`;
+    let finalConversation: Conversation | null = null;
 
     await streamChat(
       allMessages.map(m => ({ role: m.role, content: m.content })),
@@ -708,17 +709,18 @@ const Index = () => {
             ? msgs[0].content.slice(0, 30) + (msgs[0].content.length > 30 ? "..." : "")
             : conv.title;
           
-          return { ...conv, messages: msgs, title };
+          const updatedConv = { ...conv, messages: msgs, title };
+          if (conv.id === activeConvId) {
+            finalConversation = updatedConv;
+          }
+          return updatedConv;
         }));
       },
       () => {
         console.log("Stream completed");
         // Save to database if user is logged in
-        if (user) {
-          const updatedConv = conversations.find(c => c.id === activeConvId);
-          if (updatedConv) {
-            setTimeout(() => saveConversationToDB(updatedConv), 500);
-          }
+        if (user && finalConversation) {
+          saveConversationToDB(finalConversation);
         }
       }
     );
