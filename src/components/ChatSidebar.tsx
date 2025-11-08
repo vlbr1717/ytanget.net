@@ -53,7 +53,6 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
   };
 
   const presetItems = [
-    { id: 'why-built', emoji: '💡', title: 'Why we built tangent' },
     { id: 'how-to-use', emoji: '📘', title: 'How to use', isLink: true }
   ];
 
