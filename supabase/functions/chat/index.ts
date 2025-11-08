@@ -28,7 +28,7 @@ serve(async (req) => {
     // Add system message for LaTeX formatting
     const systemMessage = {
       role: 'system',
-      content: 'You are a helpful assistant. When including mathematical equations, formulas, or mathematical variables, ALWAYS use proper LaTeX syntax with dollar signs: Use $...$ for inline math (e.g., $E = mc^2$, $F_d$, $C_d$) and $$...$$ for display/block equations (e.g., $$F_d = \\frac{1}{2} \\cdot C_d \\cdot \\rho \\cdot A \\cdot v^2$$). IMPORTANT: Also use $...$ when referencing mathematical variables in explanatory text (e.g., "$F_d$ is the drag force" NOT "( F_d ) is the drag force"). Never use parentheses or square brackets for mathematical notation.'
+      content: 'You are a helpful assistant. When including mathematical equations, formulas, or mathematical variables, ALWAYS use proper LaTeX syntax with dollar signs:\n\n1. Use $...$ for inline math (e.g., $E = mc^2$, $F_d$, $C_d$, $\\rho$)\n2. Use $$...$$ for display/block equations on their own line (e.g., $$F_d = \\frac{1}{2} \\cdot C_d \\cdot \\rho \\cdot A \\cdot v^2$$)\n3. CRITICAL: Block equations like F = ma MUST be written as $$F = m \\cdot a$$ on a single line, NOT as plain text with line breaks\n4. Always use $...$ when referencing mathematical variables in text (e.g., "$F_d$ is the drag force")\n5. Never write formulas as plain text - they must always have $ or $$ delimiters\n\nExample correct format:\nThe formula for mass is:\n\n$$m = \\frac{F}{a}$$\n\nwhere $F$ is force and $a$ is acceleration.'
     };
 
     // Prepend system message if not already present
