@@ -209,50 +209,81 @@ const Index = () => {
               messages: conv.messages.map(msg => {
                 if (msg.id !== messageId) return msg;
                 
-                const addOrUpdateAiReply = (tangents: Tangent[]): Tangent[] => {
-                  return tangents.map(t => {
-                    if (t.id === newTangent.id) {
-                      const existingAiReply = t.replies?.find(r => r.id === aiTangentId);
-                      if (existingAiReply) {
+                // If this is a reply (has parent), nest under the user's tangent
+                // Otherwise, add as a sibling at the same level
+                if (parentTangentId) {
+                  const addOrUpdateAiReply = (tangents: Tangent[]): Tangent[] => {
+                    return tangents.map(t => {
+                      if (t.id === newTangent.id) {
+                        const existingAiReply = t.replies?.find(r => r.id === aiTangentId);
+                        if (existingAiReply) {
+                          return {
+                            ...t,
+                            replies: t.replies?.map(r => 
+                              r.id === aiTangentId 
+                                ? { ...r, content: aiContent }
+                                : r
+                            )
+                          };
+                        } else {
+                          return {
+                            ...t,
+                            replies: [
+                              ...(t.replies || []),
+                              {
+                                id: aiTangentId,
+                                highlighted_text: highlightedText,
+                                content: aiContent,
+                                created_at: new Date().toISOString(),
+                                parent_tangent_id: newTangent.id,
+                                replies: []
+                              }
+                            ]
+                          };
+                        }
+                      }
+                      if (t.replies && t.replies.length > 0) {
                         return {
                           ...t,
-                          replies: t.replies?.map(r => 
-                            r.id === aiTangentId 
-                              ? { ...r, content: aiContent }
-                              : r
-                          )
-                        };
-                      } else {
-                        return {
-                          ...t,
-                          replies: [
-                            ...(t.replies || []),
-                            {
-                              id: aiTangentId,
-                              highlighted_text: highlightedText,
-                              content: aiContent,
-                              created_at: new Date().toISOString(),
-                              parent_tangent_id: newTangent.id,
-                              replies: []
-                            }
-                          ]
+                          replies: addOrUpdateAiReply(t.replies)
                         };
                       }
-                    }
-                    if (t.replies && t.replies.length > 0) {
-                      return {
-                        ...t,
-                        replies: addOrUpdateAiReply(t.replies)
-                      };
-                    }
-                    return t;
-                  });
-                };
-                
-                return {
-                  ...msg,
-                  tangents: addOrUpdateAiReply(msg.tangents || [])
-                };
+                      return t;
+                    });
+                  };
+                  
+                  return {
+                    ...msg,
+                    tangents: addOrUpdateAiReply(msg.tangents || [])
+                  };
+                } else {
+                  // Add AI tangent as a sibling at the same level
+                  const existingAiTangent = msg.tangents?.find(t => t.id === aiTangentId);
+                  if (existingAiTangent) {
+                    return {
+                      ...msg,
+                      tangents: msg.tangents?.map(t => 
+                        t.id === aiTangentId 
+                          ? { ...t, content: aiContent }
+                          : t
+                      )
+                    };
+                  } else {
+                    return {
+                      ...msg,
+                      tangents: [
+                        ...(msg.tangents || []),
+                        {
+                          id: aiTangentId,
+                          highlighted_text: highlightedText,
+                          content: aiContent,
+                          created_at: new Date().toISOString(),
+                          replies: []
+                        }
+                      ]
+                    };
+                  }
+                }
               })
             };
           }));
