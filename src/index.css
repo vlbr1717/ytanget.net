@@ -106,4 +106,10 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Center and add spacing to block math formulas */
+  .katex-display {
+    text-align: center !important;
+    margin: 2rem 0 !important;
+  }
 }
