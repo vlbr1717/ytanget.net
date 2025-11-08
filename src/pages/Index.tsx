@@ -80,6 +80,33 @@ const Index = () => {
     }
   };
 
+  const handlePresetClick = (presetId: string) => {
+    const newConvId = `conv-${Date.now()}`;
+    let title = "";
+    let initialMessage = "";
+
+    if (presetId === 'why-built') {
+      title = "Why we built tangent";
+      initialMessage = "Tell me about why Tangent was built and what problem it solves.";
+    } else if (presetId === 'how-to-use') {
+      title = "How to use";
+      initialMessage = "How do I use Tangent? What are the key features?";
+    }
+
+    const newConv: Conversation = {
+      id: newConvId,
+      title,
+      messages: []
+    };
+    setConversations(prev => [...prev, newConv]);
+    setActiveConvId(newConvId);
+
+    // Automatically send the initial message
+    setTimeout(() => {
+      handleSendMessage(initialMessage);
+    }, 100);
+  };
+
   const handleCreateTangent = async (
     messageId: string, 
     highlightedText: string, 
@@ -534,13 +561,14 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <ChatSidebar
-        conversations={conversations}
-        activeId={activeConvId}
-        onNewChat={handleNewChat}
-        onSelectChat={setActiveConvId}
-        onDeleteChat={handleDeleteChat}
-      />
+        <ChatSidebar
+          conversations={conversations}
+          activeId={activeConvId}
+          onNewChat={handleNewChat}
+          onSelectChat={setActiveConvId}
+          onDeleteChat={handleDeleteChat}
+          onPresetClick={handlePresetClick}
+        />
       
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1" ref={scrollRef}>

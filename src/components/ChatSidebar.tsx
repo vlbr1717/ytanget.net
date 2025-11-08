@@ -30,9 +30,10 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
+  onPresetClick: (presetId: string) => void;
 }
 
-export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat }: ChatSidebarProps) => {
+export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onPresetClick }: ChatSidebarProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [convToDelete, setConvToDelete] = useState<string | null>(null);
 
@@ -49,16 +50,35 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
     }
   };
 
+  const presetItems = [
+    { id: 'why-built', emoji: '💡', title: 'Why we built tangent' },
+    { id: 'how-to-use', emoji: '📘', title: 'How to use' }
+  ];
+
   return (
     <div className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full">
-      <div className="p-4 border-b border-sidebar-border space-y-4">
-        <div className="flex items-center gap-3">
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3 mb-6">
           <img 
             src="/favicon.svg" 
             alt="Tangent logo" 
             className="w-8 h-8"
           />
           <h1 className="text-2xl font-semibold">Tangent</h1>
+        </div>
+        
+        <div className="space-y-1 mb-4">
+          {presetItems.map((item) => (
+            <Button
+              key={item.id}
+              onClick={() => onPresetClick(item.id)}
+              variant="ghost"
+              className="w-full justify-start gap-2 text-foreground/80 hover:text-foreground"
+            >
+              <span>{item.emoji}</span>
+              <span>{item.title}</span>
+            </Button>
+          ))}
         </div>
         
         <Button 
