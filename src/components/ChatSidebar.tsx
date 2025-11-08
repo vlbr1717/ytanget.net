@@ -58,7 +58,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
   return (
     <div className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full">
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 ml-[10px]">
           <img 
             src="/favicon.svg" 
             alt="Tangent logo" 
