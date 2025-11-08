@@ -62,6 +62,7 @@ export const ChatMessage = ({
   };
 
   const handleReplyToTangent = (tangentId: string, content: string) => {
+    console.log('ChatMessage handleReplyToTangent called:', { tangentId, content });
     if (messageId && onCreateTangent) {
       // Find the tangent to get its highlighted text
       const findTangent = (tangents: Tangent[]): Tangent | undefined => {
@@ -75,7 +76,9 @@ export const ChatMessage = ({
       };
       
       const parentTangent = findTangent(tangents);
+      console.log('Found parent tangent:', parentTangent);
       if (parentTangent) {
+        console.log('Calling onCreateTangent with parentId:', tangentId);
         onCreateTangent(messageId, parentTangent.highlighted_text, content, tangentId);
       }
     }
