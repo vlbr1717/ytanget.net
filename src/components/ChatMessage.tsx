@@ -43,9 +43,16 @@ export const ChatMessage = ({
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Shorten text for display
+  const shortenText = (text: string, maxLength: number = 30) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + "...";
+  };
+
   // Process content to replace highlighted text with tangent links
   const processedContent = tangents.reduce((text, tangent, index) => {
-    const marker = `[→ tangent ${index + 1}]`;
+    const shortenedText = shortenText(tangent.highlighted_text);
+    const marker = `[TANGENT_${index}_START]${shortenedText}[TANGENT_${index}_END]`;
     return text.replace(tangent.highlighted_text, marker);
   }, content);
 
@@ -154,20 +161,21 @@ export const ChatMessage = ({
                   // Replace tangent markers with clickable links
                   const processChildren = (child: any): any => {
                     if (typeof child === 'string') {
-                      const parts = child.split(/(\[→ tangent \d+\])/g);
+                      const parts = child.split(/(\[TANGENT_\d+_START\].*?\[TANGENT_\d+_END\])/g);
                       return parts.map((part, i) => {
-                        const match = part.match(/\[→ tangent (\d+)\]/);
+                        const match = part.match(/\[TANGENT_(\d+)_START\](.*?)\[TANGENT_\d+_END\]/);
                         if (match) {
-                          const tangentIndex = parseInt(match[1]) - 1;
+                          const tangentIndex = parseInt(match[1]);
+                          const displayText = match[2];
                           const tangent = tangents[tangentIndex];
                           if (tangent) {
                             return (
                               <button
                                 key={i}
                                 onClick={() => handleTangentLinkClick(tangent.id)}
-                                className="inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors cursor-pointer"
+                                className="inline text-primary hover:text-primary/80 underline decoration-dotted underline-offset-2 transition-colors cursor-pointer"
                               >
-                                → tangent {match[1]}
+                                {displayText}
                               </button>
                             );
                           }
