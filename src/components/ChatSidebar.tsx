@@ -72,8 +72,8 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
             <Button
               key={item.id}
               onClick={() => onPresetClick(item.id)}
-              variant="ghost"
-              className="w-full justify-start gap-2 text-foreground/80 hover:text-foreground pl-4"
+              variant="outline-primary"
+              className="w-full justify-start gap-2 text-foreground pl-4"
             >
               <span className="text-lg">{item.emoji}</span>
               <span>{item.title}</span>
@@ -84,7 +84,7 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
         <Button 
           onClick={onNewChat}
           className="w-full justify-start gap-2"
-          variant="outline"
+          variant="outline-primary"
         >
           <Plus className="h-4 w-4" />
           New chat
