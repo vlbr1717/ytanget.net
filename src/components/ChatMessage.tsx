@@ -20,8 +20,7 @@ export const ChatMessage = ({ role, content, tangents = [], messageIndex, onAddT
   const isUser = role === "user";
   const [selectedText, setSelectedText] = useState("");
   const [selectionPos, setSelectionPos] = useState<{ start: number; end: number } | null>(null);
-  const [showTangentInput, setShowTangentInput] = useState(false);
-  const [tangentContent, setTangentContent] = useState("");
+  const [showTangentPrompt, setShowTangentPrompt] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleTextSelection = () => {
@@ -39,22 +38,21 @@ export const ChatMessage = ({ role, content, tangents = [], messageIndex, onAddT
       
       setSelectedText(selectedStr);
       setSelectionPos({ start: startPos, end: endPos });
-      setShowTangentInput(true);
+      setShowTangentPrompt(true);
     }
   };
 
-  const handleSubmitTangent = () => {
-    if (tangentContent.trim() && selectedText && selectionPos) {
-      onAddTangent(messageIndex, selectedText, selectionPos.start, selectionPos.end, tangentContent);
-      setTangentContent("");
-      setShowTangentInput(false);
+  const handleCreateTangent = () => {
+    if (selectedText && selectionPos) {
+      onAddTangent(messageIndex, selectedText, selectionPos.start, selectionPos.end, selectedText);
+      setShowTangentPrompt(false);
       setSelectedText("");
       setSelectionPos(null);
     }
   };
 
   const handleReplyToTangent = (tangentId: string, content: string) => {
-    if (selectionPos) {
+    if (selectedText && selectionPos) {
       onAddTangent(messageIndex, selectedText, selectionPos.start, selectionPos.end, content, tangentId);
     }
   };
@@ -107,38 +105,30 @@ export const ChatMessage = ({ role, content, tangents = [], messageIndex, onAddT
             </ReactMarkdown>
           </div>
 
-          {showTangentInput && (
-            <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border space-y-2">
-              <div className="flex items-start gap-2">
-                <MessageSquarePlus className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="text-xs text-muted-foreground italic">
-                    re: "{selectedText}"
-                  </div>
-                  <Textarea
-                    value={tangentContent}
-                    onChange={(e) => setTangentContent(e.target.value)}
-                    placeholder="Start a tangent about this..."
-                    className="min-h-[80px]"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSubmitTangent}>
-                      Create Tangent
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setShowTangentInput(false);
-                        setTangentContent("");
-                        setSelectedText("");
-                        setSelectionPos(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+          {showTangentPrompt && (
+            <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <MessageSquarePlus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-muted-foreground truncate">
+                    Create tangent from: "{selectedText.slice(0, 50)}{selectedText.length > 50 ? '...' : ''}"
+                  </span>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button size="sm" onClick={handleCreateTangent}>
+                    Create
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowTangentPrompt(false);
+                      setSelectedText("");
+                      setSelectionPos(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>
