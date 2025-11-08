@@ -84,6 +84,12 @@ export const ChatMessage = ({
       protectedRegions.push({start: match.index, end: match.index + match[0].length});
     }
     
+    // Find inline math $...$ (exclude $$...$$ blocks)
+    const inlineMathRegex = /(?<!\$)\$[^$\n]+?\$(?!\$)/g;
+    while ((match = inlineMathRegex.exec(content)) !== null) {
+      protectedRegions.push({ start: match.index, end: match.index + match[0].length });
+    }
+    
     // Sort regions by start position
     protectedRegions.sort((a, b) => a.start - b.start);
     
@@ -233,7 +239,7 @@ export const ChatMessage = ({
             onMouseUp={handleTextSelection}
           >
             <ReactMarkdown
-              remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
+              remarkPlugins={[[remarkMath, { singleDollarTextMath: true }]]}
               rehypePlugins={[rehypeKatex]}
               components={{
                 code({ node, inline, className, children, ...props }: any) {
