@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquarePlus, Copy } from "lucide-react";
+import { MessageSquarePlus, Copy, Globe } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -14,6 +14,7 @@ import "katex/dist/katex.min.css";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TangentSelectorProps {
   selectedText: string;
@@ -30,6 +31,7 @@ export const TangentSelector = ({
 }: TangentSelectorProps) => {
   const [tangentContent, setTangentContent] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const { toast } = useToast();
 
   const handleCreate = () => {
@@ -52,6 +54,33 @@ export const TangentSelector = ({
         description: "Failed to copy",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleGetLiveInfo = async () => {
+    setIsLoadingInfo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('web-search', {
+        body: { query: selectedText }
+      });
+
+      if (error) throw error;
+
+      if (data?.information) {
+        const currentContent = tangentContent ? tangentContent + "\n\n" : "";
+        setTangentContent(currentContent + "**Live Information:**\n" + data.information);
+        toast({
+          description: "Added current information to your tangent",
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching live information:', err);
+      toast({
+        description: "Failed to fetch live information",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingInfo(false);
     }
   };
 
@@ -140,6 +169,15 @@ export const TangentSelector = ({
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreate}>
               Send
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleGetLiveInfo}
+              disabled={isLoadingInfo}
+            >
+              <Globe className="h-3 w-3 mr-1" />
+              {isLoadingInfo ? "Loading..." : "Get Live Info"}
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Cancel
