@@ -42,6 +42,26 @@ const Index = () => {
     setActiveConvId(newId);
   };
 
+  const handleDeleteChat = (id: string) => {
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      if (updated.length === 0) {
+        const newId = Date.now().toString();
+        return [{ id: newId, title: "New Chat", messages: [] }];
+      }
+      return updated;
+    });
+    
+    if (activeConvId === id) {
+      setConversations(prev => {
+        if (prev.length > 0) {
+          setActiveConvId(prev[0].id);
+        }
+        return prev;
+      });
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = { role: "user", content };
     
@@ -90,6 +110,7 @@ const Index = () => {
         activeId={activeConvId}
         onNewChat={handleNewChat}
         onSelectChat={setActiveConvId}
+        onDeleteChat={handleDeleteChat}
       />
       
       <div className="flex-1 flex flex-col">
