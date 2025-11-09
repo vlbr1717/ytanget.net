@@ -175,6 +175,15 @@ export const ChatMessage = ({
           y: rect.bottom + window.scrollY + 8
         });
         setShowTangentSelector(true);
+        
+        // Keep the selection visible by re-selecting after a brief delay
+        // This prevents the selection from being cleared when the popover opens
+        setTimeout(() => {
+          if (range && selection) {
+            selection.removeAllRanges();
+            selection.addRange(range.cloneRange());
+          }
+        }, 10);
       }
     }
   };
@@ -323,7 +332,11 @@ export const ChatMessage = ({
           selectedText={selectedText}
           position={selectorPosition}
           onCreateTangent={handleCreateTangent}
-          onClose={() => setShowTangentSelector(false)}
+          onClose={() => {
+            setShowTangentSelector(false);
+            // Clear the selection when closing
+            window.getSelection()?.removeAllRanges();
+          }}
         />
       )}
     </div>
