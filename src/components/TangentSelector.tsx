@@ -97,7 +97,7 @@ export const TangentSelector = ({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={(open) => {
+    <Popover modal={false} open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
       if (!open) onClose();
     }}>
@@ -115,7 +115,7 @@ export const TangentSelector = ({
           Create Tangent
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" side="right" align="start" sideOffset={8}>
+      <PopoverContent className="w-80" side="right" align="start" sideOffset={8} onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -191,7 +191,6 @@ export const TangentSelector = ({
               onChange={(e) => setTangentContent(e.target.value)}
               onKeyDown={handleKeyDown}
               className="mt-1 min-h-[100px]"
-              autoFocus
             />
           </div>
 

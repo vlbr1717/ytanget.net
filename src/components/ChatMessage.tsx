@@ -175,12 +175,14 @@ export const ChatMessage = ({
         setHighlightRange(range);
 
         const containerRect = contentRef.current.getBoundingClientRect();
-        const rects = Array.from(range.getClientRects()).map(r => ({
-          left: r.left - containerRect.left,
-          top: r.top - containerRect.top,
-          width: r.width,
-          height: r.height,
-        }));
+        const rects = Array.from(range.getClientRects())
+          .filter(r => r.width > 0 && r.height > 0)
+          .map(r => ({
+            left: r.left - containerRect.left,
+            top: r.top - containerRect.top,
+            width: r.width,
+            height: r.height,
+          }));
         setHighlightRects(rects);
 
         setSelectorPosition({
@@ -233,12 +235,14 @@ export const ChatMessage = ({
     const updateRects = () => {
       if (showTangentSelector && highlightRange && contentRef.current) {
         const containerRect = contentRef.current.getBoundingClientRect();
-        const rects = Array.from(highlightRange.getClientRects()).map(r => ({
-          left: r.left - containerRect.left,
-          top: r.top - containerRect.top,
-          width: r.width,
-          height: r.height,
-        }));
+        const rects = Array.from(highlightRange.getClientRects())
+          .filter(r => r.width > 0 && r.height > 0)
+          .map(r => ({
+            left: r.left - containerRect.left,
+            top: r.top - containerRect.top,
+            width: r.width,
+            height: r.height,
+          }));
         setHighlightRects(rects);
       }
     };
