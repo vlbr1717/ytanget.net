@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { Cloud, Check } from "lucide-react";
 import {
   DropdownMenu,
@@ -96,15 +97,17 @@ const Index = () => {
     }
   }, [messages]);
 
-  // Debounced auto-save whenever conversations change
+  // Flush saves on page unload
   useEffect(() => {
-    if (!user) return;
-    const active = conversations.find(c => c.id === activeConvId);
-    if (!active) return;
-    const handle = window.setTimeout(() => {
-      saveConversationToDB(active);
-    }, 800);
-    return () => window.clearTimeout(handle);
+    const handleBeforeUnload = () => {
+      if (!user) return;
+      const active = conversations.find(c => c.id === activeConvId);
+      if (active) {
+        saveConversationToDB(active);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [conversations, activeConvId, user]);
 
   const loadConversationsFromDB = async () => {
@@ -177,7 +180,7 @@ const Index = () => {
     }
   };
 
-  const saveConversationToDB = async (conversation: Conversation) => {
+  const saveConversationToDB = async (conversation: Conversation, showToast = false) => {
     if (!user) return;
 
     const isValidUUID = (str: string) =>
@@ -270,9 +273,15 @@ const Index = () => {
       
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
+      if (showToast) {
+        sonnerToast.success("Saved successfully");
+      }
     } catch (error) {
       console.error("Error saving conversation:", error);
       setSaveStatus("idle");
+      if (showToast) {
+        sonnerToast.error("Failed to save tangent");
+      }
     }
   };
 
@@ -666,7 +675,14 @@ const Index = () => {
                 };
               }));
             },
-            () => console.log("AI reply completed")
+            async () => {
+              console.log("AI reply completed");
+              // Immediately save to DB after streaming completes
+              const updatedConv = conversations.find(c => c.id === activeConvId);
+              if (updatedConv) {
+                await saveConversationToDB(updatedConv, true);
+              }
+            }
           );
         }
       }
@@ -704,6 +720,21 @@ const Index = () => {
         })
       };
     }));
+
+    // Immediately save new tangent to DB
+    const updatedConv = conversations.find(c => c.id === activeConvId);
+    if (updatedConv) {
+      // Create a temporary conversation with the new tangent to save
+      const tempConv: Conversation = {
+        ...updatedConv,
+        messages: updatedConv.messages.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, tangents: [...(msg.tangents || []), newTangent] }
+            : msg
+        )
+      };
+      await saveConversationToDB(tempConv, true);
+    }
 
     // Generate AI response for new tangent if content provided
     if (content.trim()) {
