@@ -119,12 +119,15 @@ const Index = () => {
             if (msgError) throw msgError;
 
             // Load all tangents for this conversation
-            const { data: tangentsData, error: tangentsError } = await supabase
-              .from("tangents")
-              .select("*")
-              .in("message_id", msgData?.map(m => m.id) || []);
-
-            if (tangentsError) throw tangentsError;
+            let tangentsData: any[] = [];
+            if (msgData && msgData.length > 0) {
+              const tangentsQuery = await supabase
+                .from("tangents")
+                .select("*")
+                .in("message_id", msgData.map(m => m.id));
+              if (tangentsQuery.error) throw tangentsQuery.error;
+              tangentsData = tangentsQuery.data || [];
+            }
 
             // Build tangent tree recursively
             const buildTangentTree = (parentId: string | null, messageId: string): Tangent[] => {
@@ -206,13 +209,19 @@ const Index = () => {
         }
 
         // Save tangents recursively
-        const saveTangents = async (tangents: Tangent[], messageId: string, parentTangentId: string | null = null) => {
+        const saveTangents = async (
+          tangents: Tangent[],
+          messageId: string,
+          parentTangentId: string | null = null
+        ) => {
           for (const tangent of tangents) {
-            if (tangent.id && isValidUUID(tangent.id)) {
+            let currentId: string | null = tangent.id && isValidUUID(tangent.id) ? tangent.id : null;
+
+            if (currentId) {
               const { error: tangentError } = await supabase
                 .from("tangents")
                 .upsert({
-                  id: tangent.id,
+                  id: currentId,
                   user_id: user.id,
                   message_id: messageId,
                   parent_tangent_id: parentTangentId,
@@ -220,11 +229,25 @@ const Index = () => {
                   content: JSON.stringify(tangent.conversation)
                 });
               if (tangentError) throw tangentError;
+            } else {
+              const { data: inserted, error: insertTangentErr } = await supabase
+                .from("tangents")
+                .insert({
+                  user_id: user.id,
+                  message_id: messageId,
+                  parent_tangent_id: parentTangentId,
+                  highlighted_text: tangent.highlighted_text,
+                  content: JSON.stringify(tangent.conversation)
+                })
+                .select("id")
+                .single();
+              if (insertTangentErr) throw insertTangentErr;
+              currentId = inserted.id;
+            }
 
-              // Recursively save sub-tangents
-              if (tangent.sub_tangents && tangent.sub_tangents.length > 0) {
-                await saveTangents(tangent.sub_tangents, messageId, tangent.id);
-              }
+            // Recursively save sub-tangents
+            if (tangent.sub_tangents && tangent.sub_tangents.length > 0) {
+              await saveTangents(tangent.sub_tangents, messageId, currentId);
             }
           }
         };
