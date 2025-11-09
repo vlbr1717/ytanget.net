@@ -199,28 +199,33 @@ const Index = () => {
 
       if (convError) throw convError;
 
-      for (const msg of conversation.messages) {
-        if (msg.id && isValidUUID(msg.id)) {
-          const { error: msgError } = await supabase
-            .from("messages")
-            .upsert({
-              id: msg.id,
-              conversation_id: conversation.id,
-              role: msg.role,
-              content: msg.content
-            });
-          if (msgError) throw msgError;
-        } else {
-          // Insert and let the DB generate a UUID id
-          const { error: insertErr } = await supabase
-            .from("messages")
-            .insert({
-              conversation_id: conversation.id,
-              role: msg.role,
-              content: msg.content
-            });
-          if (insertErr) throw insertErr;
-        }
+        for (const msg of conversation.messages) {
+          let resolvedMessageId: string | null = (msg.id && isValidUUID(msg.id)) ? msg.id : null;
+
+          if (resolvedMessageId) {
+            const { error: msgError } = await supabase
+              .from("messages")
+              .upsert({
+                id: resolvedMessageId,
+                conversation_id: conversation.id,
+                role: msg.role,
+                content: msg.content
+              });
+            if (msgError) throw msgError;
+          } else {
+            // Insert and get the generated UUID id so tangents can reference it correctly
+            const { data: insertedMsg, error: insertErr } = await supabase
+              .from("messages")
+              .insert({
+                conversation_id: conversation.id,
+                role: msg.role,
+                content: msg.content
+              })
+              .select("id")
+              .single();
+            if (insertErr) throw insertErr;
+            resolvedMessageId = insertedMsg.id;
+          }
 
         // Save tangents recursively
         const saveTangents = async (
@@ -266,8 +271,8 @@ const Index = () => {
           }
         };
 
-        if (msg.tangents && msg.tangents.length > 0) {
-          await saveTangents(msg.tangents, msg.id);
+        if (msg.tangents && msg.tangents.length > 0 && resolvedMessageId) {
+          await saveTangents(msg.tangents, resolvedMessageId);
         }
       }
       
