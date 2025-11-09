@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -45,6 +45,7 @@ export const ChatMessage = ({
   const [selectedText, setSelectedText] = useState("");
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const [highlightRange, setHighlightRange] = useState<Range | null>(null);
+  const [highlightRects, setHighlightRects] = useState<Array<{ left: number; top: number; width: number; height: number }>>([]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Shorten text for display
@@ -165,31 +166,28 @@ export const ChatMessage = ({
     const selection = window.getSelection();
     const text = selection?.toString().trim();
     
-    if (text && text.length > 0 && !isUser && messageId && onCreateTangent) {
-      const range = selection?.getRangeAt(0);
-      const rect = range?.getBoundingClientRect();
+    if (text && text.length > 0 && !isUser && messageId && onCreateTangent && contentRef.current) {
+      const range = selection!.getRangeAt(0).cloneRange();
+      const rect = range.getBoundingClientRect();
       
-      if (rect && range) {
-        // Store the range for highlighting
-        setHighlightRange(range.cloneRange());
+      if (rect && (rect.width || rect.height)) {
         setSelectedText(text);
+        setHighlightRange(range);
+
+        const containerRect = contentRef.current.getBoundingClientRect();
+        const rects = Array.from(range.getClientRects()).map(r => ({
+          left: r.left - containerRect.left,
+          top: r.top - containerRect.top,
+          width: r.width,
+          height: r.height,
+        }));
+        setHighlightRects(rects);
+
         setSelectorPosition({
           x: rect.left + rect.width / 2,
           y: rect.bottom + window.scrollY + 8
         });
         setShowTangentSelector(true);
-        
-        // Wrap selected text in a highlight span
-        const span = document.createElement('span');
-        span.className = 'tangent-highlight';
-        span.style.backgroundColor = 'hsl(168 70% 58% / 0.3)';
-        span.style.borderRadius = '2px';
-        try {
-          range.surroundContents(span);
-        } catch (e) {
-          // If surroundContents fails (complex selection), keep selection visible
-          console.log('Could not wrap selection, maintaining browser selection');
-        }
       }
     }
   };
@@ -230,6 +228,31 @@ export const ChatMessage = ({
       onCreateTangent(messageId, highlightedText, content, parentTangentId, true);
     }
   };
+
+  useEffect(() => {
+    const updateRects = () => {
+      if (showTangentSelector && highlightRange && contentRef.current) {
+        const containerRect = contentRef.current.getBoundingClientRect();
+        const rects = Array.from(highlightRange.getClientRects()).map(r => ({
+          left: r.left - containerRect.left,
+          top: r.top - containerRect.top,
+          width: r.width,
+          height: r.height,
+        }));
+        setHighlightRects(rects);
+      }
+    };
+
+    if (showTangentSelector) {
+      window.addEventListener('scroll', updateRects, true);
+      window.addEventListener('resize', updateRects);
+      updateRects();
+      return () => {
+        window.removeEventListener('scroll', updateRects, true);
+        window.removeEventListener('resize', updateRects);
+      };
+    }
+  }, [showTangentSelector, highlightRange]);
   
   return (
     <div className={cn(
@@ -250,7 +273,7 @@ export const ChatMessage = ({
         <div className="flex-1 space-y-4 overflow-hidden">
           <div 
             ref={contentRef}
-            className="prose prose-invert max-w-none"
+            className="prose prose-invert max-w-none relative"
             onMouseUp={handleTextSelection}
           >
             <ReactMarkdown
@@ -312,6 +335,18 @@ export const ChatMessage = ({
             >
               {processedContent}
             </ReactMarkdown>
+          {/* Persistent selection overlay */}
+          {showTangentSelector && highlightRects.length > 0 && (
+            <div className="pointer-events-none absolute inset-0 z-10">
+              {highlightRects.map((r, i) => (
+                <span
+                  key={i}
+                  className="absolute rounded-sm bg-primary/30"
+                  style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
+                />
+              ))}
+            </div>
+          )}
           </div>
 
           {/* Tangent threads */}
@@ -341,24 +376,8 @@ export const ChatMessage = ({
           onClose={() => {
             setShowTangentSelector(false);
             setHighlightRange(null);
-            
-            // Remove all highlight spans
-            if (contentRef.current) {
-              const highlights = contentRef.current.querySelectorAll('.tangent-highlight');
-              highlights.forEach(span => {
-                const parent = span.parentNode;
-                if (parent) {
-                  while (span.firstChild) {
-                    parent.insertBefore(span.firstChild, span);
-                  }
-                  parent.removeChild(span);
-                }
-              });
-              // Normalize the text nodes
-              contentRef.current.normalize();
-            }
-            
-            // Clear the selection
+            setHighlightRects([]);
+            // Clear the browser selection
             window.getSelection()?.removeAllRanges();
           }}
         />
