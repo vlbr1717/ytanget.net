@@ -118,4 +118,24 @@ All colors MUST be HSL.
   .katex-display > .katex {
     text-align: center !important;
   }
+
+  /* Custom text selection styling in teal theme color */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+    color: inherit;
+  }
+
+  ::-moz-selection {
+    background-color: hsl(var(--primary) / 0.3);
+    color: inherit;
+  }
+
+  /* Keep selection visible even when focus is lost */
+  .keep-selection ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+  }
+
+  .keep-selection::-moz-selection {
+    background-color: hsl(var(--primary) / 0.3);
+  }
 }
