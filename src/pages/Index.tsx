@@ -118,6 +118,30 @@ const Index = () => {
 
             if (msgError) throw msgError;
 
+            // Load all tangents for this conversation
+            const { data: tangentsData, error: tangentsError } = await supabase
+              .from("tangents")
+              .select("*")
+              .in("message_id", msgData?.map(m => m.id) || []);
+
+            if (tangentsError) throw tangentsError;
+
+            // Build tangent tree recursively
+            const buildTangentTree = (parentId: string | null, messageId: string): Tangent[] => {
+              const children = tangentsData?.filter(
+                t => t.parent_tangent_id === parentId && t.message_id === messageId
+              ) || [];
+
+              return children.map(t => ({
+                id: t.id,
+                highlighted_text: t.highlighted_text,
+                conversation: JSON.parse(t.content),
+                created_at: t.created_at,
+                parent_tangent_id: t.parent_tangent_id || undefined,
+                sub_tangents: buildTangentTree(t.id, messageId)
+              }));
+            };
+
             return {
               id: conv.id,
               title: conv.title,
@@ -125,7 +149,7 @@ const Index = () => {
                 id: msg.id,
                 role: msg.role as "user" | "assistant",
                 content: msg.content,
-                tangents: []
+                tangents: buildTangentTree(null, msg.id)
               })) || []
             };
           })
@@ -179,6 +203,34 @@ const Index = () => {
               content: msg.content
             });
           if (insertErr) throw insertErr;
+        }
+
+        // Save tangents recursively
+        const saveTangents = async (tangents: Tangent[], messageId: string, parentTangentId: string | null = null) => {
+          for (const tangent of tangents) {
+            if (tangent.id && isValidUUID(tangent.id)) {
+              const { error: tangentError } = await supabase
+                .from("tangents")
+                .upsert({
+                  id: tangent.id,
+                  user_id: user.id,
+                  message_id: messageId,
+                  parent_tangent_id: parentTangentId,
+                  highlighted_text: tangent.highlighted_text,
+                  content: JSON.stringify(tangent.conversation)
+                });
+              if (tangentError) throw tangentError;
+
+              // Recursively save sub-tangents
+              if (tangent.sub_tangents && tangent.sub_tangents.length > 0) {
+                await saveTangents(tangent.sub_tangents, messageId, tangent.id);
+              }
+            }
+          }
+        };
+
+        if (msg.tangents && msg.tangents.length > 0) {
+          await saveTangents(msg.tangents, msg.id);
         }
       }
       
