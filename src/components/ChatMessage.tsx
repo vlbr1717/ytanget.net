@@ -44,6 +44,7 @@ export const ChatMessage = ({
   const [showTangentSelector, setShowTangentSelector] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
+  const [highlightRange, setHighlightRange] = useState<Range | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Shorten text for display
@@ -168,7 +169,9 @@ export const ChatMessage = ({
       const range = selection?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();
       
-      if (rect) {
+      if (rect && range) {
+        // Store the range for highlighting
+        setHighlightRange(range.cloneRange());
         setSelectedText(text);
         setSelectorPosition({
           x: rect.left + rect.width / 2,
@@ -176,14 +179,17 @@ export const ChatMessage = ({
         });
         setShowTangentSelector(true);
         
-        // Keep the selection visible by re-selecting after a brief delay
-        // This prevents the selection from being cleared when the popover opens
-        setTimeout(() => {
-          if (range && selection) {
-            selection.removeAllRanges();
-            selection.addRange(range.cloneRange());
-          }
-        }, 10);
+        // Wrap selected text in a highlight span
+        const span = document.createElement('span');
+        span.className = 'tangent-highlight';
+        span.style.backgroundColor = 'hsl(168 70% 58% / 0.3)';
+        span.style.borderRadius = '2px';
+        try {
+          range.surroundContents(span);
+        } catch (e) {
+          // If surroundContents fails (complex selection), keep selection visible
+          console.log('Could not wrap selection, maintaining browser selection');
+        }
       }
     }
   };
@@ -334,7 +340,25 @@ export const ChatMessage = ({
           onCreateTangent={handleCreateTangent}
           onClose={() => {
             setShowTangentSelector(false);
-            // Clear the selection when closing
+            setHighlightRange(null);
+            
+            // Remove all highlight spans
+            if (contentRef.current) {
+              const highlights = contentRef.current.querySelectorAll('.tangent-highlight');
+              highlights.forEach(span => {
+                const parent = span.parentNode;
+                if (parent) {
+                  while (span.firstChild) {
+                    parent.insertBefore(span.firstChild, span);
+                  }
+                  parent.removeChild(span);
+                }
+              });
+              // Normalize the text nodes
+              contentRef.current.normalize();
+            }
+            
+            // Clear the selection
             window.getSelection()?.removeAllRanges();
           }}
         />
