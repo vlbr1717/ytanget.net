@@ -96,6 +96,17 @@ const Index = () => {
     }
   }, [messages]);
 
+  // Debounced auto-save whenever conversations change
+  useEffect(() => {
+    if (!user) return;
+    const active = conversations.find(c => c.id === activeConvId);
+    if (!active) return;
+    const handle = window.setTimeout(() => {
+      saveConversationToDB(active);
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [conversations, activeConvId, user]);
+
   const loadConversationsFromDB = async () => {
     if (!user) return;
 
@@ -225,8 +236,8 @@ const Index = () => {
                   user_id: user.id,
                   message_id: messageId,
                   parent_tangent_id: parentTangentId,
-                  highlighted_text: tangent.highlighted_text,
-                  content: JSON.stringify(tangent.conversation)
+                  highlighted_text: tangent.highlighted_text || "",
+                  content: JSON.stringify(tangent.conversation || [])
                 });
               if (tangentError) throw tangentError;
             } else {
@@ -236,8 +247,8 @@ const Index = () => {
                   user_id: user.id,
                   message_id: messageId,
                   parent_tangent_id: parentTangentId,
-                  highlighted_text: tangent.highlighted_text,
-                  content: JSON.stringify(tangent.conversation)
+                  highlighted_text: tangent.highlighted_text || "",
+                  content: JSON.stringify(tangent.conversation || [])
                 })
                 .select("id")
                 .single();
@@ -374,11 +385,11 @@ const Index = () => {
     if (parentTangentId && isSubTangent) {
       // Create a new sub-tangent nested under the parent
       const newSubTangent: Tangent = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         highlighted_text: highlightedText,
         conversation: [
           {
-            id: Date.now().toString(),
+            id: crypto.randomUUID(),
             content,
             role: "user",
             created_at: new Date().toISOString()
@@ -531,7 +542,7 @@ const Index = () => {
     if (parentTangentId) {
       // Add message to the tangent's conversation
       const userMessage: TangentMessage = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         content,
         role: "user",
         created_at: new Date().toISOString()
@@ -664,11 +675,11 @@ const Index = () => {
 
     // This is a new tangent - create it with initial conversation
     const newTangent: Tangent = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       highlighted_text: highlightedText,
       conversation: [
         {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           content,
           role: "user",
           created_at: new Date().toISOString()
