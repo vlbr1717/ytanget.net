@@ -48,10 +48,11 @@ interface Conversation {
 }
 
 const Index = () => {
+  const initialConvId = crypto.randomUUID();
   const [conversations, setConversations] = useState<Conversation[]>([
-    { id: "1", title: "New Chat", messages: [] }
+    { id: initialConvId, title: "New Chat", messages: [] }
   ]);
-  const [activeConvId, setActiveConvId] = useState<string>("1");
+  const [activeConvId, setActiveConvId] = useState<string>(initialConvId);
   const [sidebarVisible, setSidebarVisible] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -188,18 +189,38 @@ const Index = () => {
 
     setSaveStatus("saving");
     try {
-      const { error: convError } = await supabase
-        .from("conversations")
-        .upsert({
-          id: conversation.id,
-          user_id: user.id,
-          title: conversation.title,
-          updated_at: new Date().toISOString()
-        });
+      let convId = conversation.id;
 
-      if (convError) throw convError;
+      if (isValidUUID(conversation.id)) {
+        const { error: convError } = await supabase
+          .from("conversations")
+          .upsert({
+            id: conversation.id,
+            user_id: user.id,
+            title: conversation.title,
+            updated_at: new Date().toISOString()
+          });
+        if (convError) throw convError;
+      } else {
+        const { data: convInsert, error: convInsertErr } = await supabase
+          .from("conversations")
+          .insert({
+            user_id: user.id,
+            title: conversation.title,
+            updated_at: new Date().toISOString()
+          })
+          .select("id")
+          .single();
+        if (convInsertErr) throw convInsertErr;
+        convId = convInsert.id;
+        // Update local state to use the DB-generated UUID
+        setConversations(prev => prev.map(c => c.id === conversation.id ? { ...c, id: convId } : c));
+        if (activeConvId === conversation.id) {
+          setActiveConvId(convId);
+        }
+      }
 
-        for (const msg of conversation.messages) {
+      for (const msg of conversation.messages) {
           let resolvedMessageId: string | null = (msg.id && isValidUUID(msg.id)) ? msg.id : null;
 
           if (resolvedMessageId) {
@@ -207,7 +228,7 @@ const Index = () => {
               .from("messages")
               .upsert({
                 id: resolvedMessageId,
-                conversation_id: conversation.id,
+                conversation_id: convId,
                 role: msg.role,
                 content: msg.content
               });
@@ -217,7 +238,7 @@ const Index = () => {
             const { data: insertedMsg, error: insertErr } = await supabase
               .from("messages")
               .insert({
-                conversation_id: conversation.id,
+                conversation_id: convId,
                 role: msg.role,
                 content: msg.content
               })
@@ -292,8 +313,9 @@ const Index = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setConversations([{ id: "1", title: "New Chat", messages: [] }]);
-    setActiveConvId("1");
+    const guestId = crypto.randomUUID();
+    setConversations([{ id: guestId, title: "New Chat", messages: [] }]);
+    setActiveConvId(guestId);
     toast({
       title: "Logged out",
       description: "You're now in guest mode. Chats won't be saved.",
@@ -340,7 +362,7 @@ const Index = () => {
     setConversations(prev => {
       const updated = prev.filter(c => c.id !== id);
       if (updated.length === 0) {
-        const newId = Date.now().toString();
+        const newId = crypto.randomUUID();
         return [{ id: newId, title: "New Chat", messages: [] }];
       }
       return updated;
