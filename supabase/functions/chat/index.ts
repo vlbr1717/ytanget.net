@@ -7,6 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_MESSAGE_LENGTH = 10000;
+const MAX_MESSAGES = 50;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,6 +18,41 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
+    
+    // Input validation
+    if (!messages || !Array.isArray(messages)) {
+      console.error('Invalid messages format');
+      return new Response(
+        JSON.stringify({ error: 'Invalid messages format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (messages.length > MAX_MESSAGES) {
+      console.error('Too many messages:', messages.length);
+      return new Response(
+        JSON.stringify({ error: 'Too many messages in conversation' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    for (const msg of messages) {
+      if (!msg.role || !msg.content) {
+        console.error('Invalid message structure');
+        return new Response(
+          JSON.stringify({ error: 'Invalid message structure' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (typeof msg.content === 'string' && msg.content.length > MAX_MESSAGE_LENGTH) {
+        console.error('Message too long:', msg.content.length);
+        return new Response(
+          JSON.stringify({ error: 'Message exceeds maximum length' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
     console.log('Received chat request with', messages.length, 'messages');
 
     if (!LOVABLE_API_KEY) {
