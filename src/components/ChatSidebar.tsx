@@ -19,6 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FolderTree } from "@/components/FolderTree";
+import { useFolders, FolderNode, ConversationItem } from "@/hooks/useFolders";
 
 interface Conversation {
   id: string;
@@ -28,6 +30,7 @@ interface Conversation {
 interface ChatSidebarProps {
   conversations: Conversation[];
   activeId: string | null;
+  userId: string | null;
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
@@ -35,22 +38,67 @@ interface ChatSidebarProps {
   onToggleSidebar?: () => void;
 }
 
-export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onPresetClick, onToggleSidebar }: ChatSidebarProps) => {
+export const ChatSidebar = ({ 
+  conversations, 
+  activeId, 
+  userId,
+  onNewChat, 
+  onSelectChat, 
+  onDeleteChat, 
+  onPresetClick, 
+  onToggleSidebar 
+}: ChatSidebarProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [convToDelete, setConvToDelete] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: 'conversation' | 'folder' } | null>(null);
 
-  const handleDeleteClick = (convId: string) => {
-    setConvToDelete(convId);
+  const {
+    folders,
+    unfiledConversations,
+    expandedFolderIds,
+    createFolder,
+    renameFolder,
+    updateFolderColor,
+    deleteFolder,
+    moveConversation,
+    moveFolder,
+    toggleFolderExpanded,
+    refresh
+  } = useFolders(userId);
+
+  // Merge local conversations with DB data for unfiled
+  const mergedUnfiled: ConversationItem[] = userId 
+    ? unfiledConversations 
+    : conversations.map(c => ({ 
+        id: c.id, 
+        title: c.title, 
+        folder_id: null, 
+        updated_at: new Date().toISOString() 
+      }));
+
+  const handleDeleteClick = (id: string, type: 'conversation' | 'folder') => {
+    setItemToDelete({ id, type });
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (convToDelete) {
-      onDeleteChat(convToDelete);
+  const confirmDelete = async () => {
+    if (itemToDelete) {
+      if (itemToDelete.type === 'conversation') {
+        onDeleteChat(itemToDelete.id);
+      } else {
+        await deleteFolder(itemToDelete.id);
+      }
       setDeleteDialogOpen(false);
-      setConvToDelete(null);
+      setItemToDelete(null);
     }
+  };
+
+  const handleCreateFolder = async (name: string, parentId: string | null) => {
+    await createFolder(name, parentId);
+  };
+
+  const handleMoveConversation = async (convId: string, folderId: string | null) => {
+    await moveConversation(convId, folderId);
   };
 
   const presetItems = [
@@ -118,50 +166,73 @@ export const ChatSidebar = ({ conversations, activeId, onNewChat, onSelectChat, 
         </Button>
       </div>
       
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {conversations.map((conv) => (
-            <div key={conv.id} className="group relative flex items-center gap-1">
-              <Button
-                onClick={() => onSelectChat(conv.id)}
-                variant={activeId === conv.id ? "secondary" : "ghost"}
-                className="flex-1 justify-start gap-2 text-left"
-              >
-                <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{conv.title}</span>
-              </Button>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => handleDeleteClick(conv.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+      {/* Folder Tree for logged-in users, simple list for guests */}
+      {userId ? (
+        <FolderTree
+          folders={folders}
+          unfiledConversations={mergedUnfiled}
+          activeConversationId={activeId}
+          expandedFolderIds={expandedFolderIds}
+          onSelectConversation={onSelectChat}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={renameFolder}
+          onDeleteFolder={(id) => handleDeleteClick(id, 'folder')}
+          onUpdateFolderColor={updateFolderColor}
+          onToggleFolderExpanded={toggleFolderExpanded}
+          onMoveConversation={handleMoveConversation}
+          onMoveFolder={moveFolder}
+          onDeleteConversation={(id) => handleDeleteClick(id, 'conversation')}
+        />
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-1">
+            {conversations.map((conv) => (
+              <div key={conv.id} className="group relative flex items-center gap-1">
+                <Button
+                  onClick={() => onSelectChat(conv.id)}
+                  variant={activeId === conv.id ? "secondary" : "ghost"}
+                  className="flex-1 justify-start gap-2 text-left"
+                >
+                  <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{conv.title}</span>
+                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover z-50">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleDeleteClick(conv.id, 'conversation')}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {itemToDelete?.type === 'folder' ? 'folder' : 'conversation'}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this conversation.
+              {itemToDelete?.type === 'folder' 
+                ? 'This will delete the folder. Conversations inside will be moved to Unfiled.'
+                : 'This action cannot be undone. This will permanently delete this conversation.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

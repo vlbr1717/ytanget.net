@@ -905,6 +905,7 @@ const Index = () => {
         <ChatSidebar
           conversations={conversations}
           activeId={activeConvId}
+          userId={user?.id ?? null}
           onNewChat={handleNewChat}
           onSelectChat={setActiveConvId}
           onDeleteChat={handleDeleteChat}

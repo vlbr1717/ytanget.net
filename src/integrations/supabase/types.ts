@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           backlog_summary: Json | null
           created_at: string
+          folder_id: string | null
           id: string
           title: string
           updated_at: string
@@ -26,6 +27,7 @@ export type Database = {
         Insert: {
           backlog_summary?: Json | null
           created_at?: string
+          folder_id?: string | null
           id?: string
           title?: string
           updated_at?: string
@@ -34,12 +36,65 @@ export type Database = {
         Update: {
           backlog_summary?: Json | null
           created_at?: string
+          folder_id?: string | null
           id?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_expanded: boolean | null
+          name: string
+          parent_folder_id: string | null
+          sort_order: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_expanded?: boolean | null
+          name: string
+          parent_folder_id?: string | null
+          sort_order?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_expanded?: boolean | null
+          name?: string
+          parent_folder_id?: string | null
+          sort_order?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
