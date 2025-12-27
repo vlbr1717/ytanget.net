@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       conversations: {
         Row: {
+          backlog_summary: Json | null
           created_at: string
           id: string
           title: string
@@ -23,6 +24,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          backlog_summary?: Json | null
           created_at?: string
           id?: string
           title?: string
@@ -30,6 +32,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          backlog_summary?: Json | null
           created_at?: string
           id?: string
           title?: string
@@ -66,6 +69,60 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nodes: {
+        Row: {
+          assistant_response: string | null
+          branch_name: string | null
+          conversation_id: string
+          created_at: string
+          depth: number | null
+          id: string
+          is_collapsed: boolean | null
+          parent_id: string | null
+          updated_at: string
+          user_message: string
+        }
+        Insert: {
+          assistant_response?: string | null
+          branch_name?: string | null
+          conversation_id: string
+          created_at?: string
+          depth?: number | null
+          id?: string
+          is_collapsed?: boolean | null
+          parent_id?: string | null
+          updated_at?: string
+          user_message: string
+        }
+        Update: {
+          assistant_response?: string | null
+          branch_name?: string | null
+          conversation_id?: string
+          created_at?: string
+          depth?: number | null
+          id?: string
+          is_collapsed?: boolean | null
+          parent_id?: string | null
+          updated_at?: string
+          user_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nodes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
         ]
