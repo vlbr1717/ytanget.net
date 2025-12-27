@@ -10,20 +10,20 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [phase, setPhase] = useState<"zoom" | "hold" | "fade">("zoom");
 
   useEffect(() => {
-    // Phase 1: Zoom out (2 seconds)
+    // Phase 1: Zoom out (1.5 seconds)
     const zoomTimer = setTimeout(() => {
       setPhase("hold");
-    }, 2000);
+    }, 1500);
 
-    // Phase 2: Hold (3 seconds after zoom)
+    // Phase 2: Hold (5 seconds after zoom)
     const holdTimer = setTimeout(() => {
       setPhase("fade");
-    }, 5000);
+    }, 6500);
 
     // Phase 3: Fade out and complete
     const completeTimer = setTimeout(() => {
       onComplete();
-    }, 5500);
+    }, 7000);
 
     return () => {
       clearTimeout(zoomTimer);
@@ -54,7 +54,7 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           initial={{ scale: 3 }}
           animate={{ scale: 1 }}
           transition={{ 
-            duration: 2, 
+            duration: 1.5, 
             ease: [0.25, 0.46, 0.45, 0.94]
           }}
         >
