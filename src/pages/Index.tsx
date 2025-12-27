@@ -60,6 +60,7 @@ const Index = () => {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const refreshFoldersRef = useRef<(() => void) | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -340,6 +341,8 @@ const Index = () => {
       // Save to database if user is logged in
       if (user) {
         await saveConversationToDB(newConv);
+        // Refresh the folder tree to show the new conversation
+        refreshFoldersRef.current?.();
       }
     }
   };
@@ -354,6 +357,9 @@ const Index = () => {
           .eq("id", id);
 
         if (error) throw error;
+        
+        // Refresh folder tree
+        refreshFoldersRef.current?.();
       } catch (error) {
         console.error("Error deleting conversation:", error);
       }
@@ -911,6 +917,7 @@ const Index = () => {
           onDeleteChat={handleDeleteChat}
           onPresetClick={handlePresetClick}
           onToggleSidebar={() => setSidebarVisible(false)}
+          refreshFoldersRef={refreshFoldersRef}
         />
       )}
       

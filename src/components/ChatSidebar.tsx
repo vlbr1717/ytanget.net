@@ -36,6 +36,7 @@ interface ChatSidebarProps {
   onDeleteChat: (id: string) => void;
   onPresetClick: (presetId: string) => void;
   onToggleSidebar?: () => void;
+  refreshFoldersRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 export const ChatSidebar = ({ 
@@ -46,7 +47,8 @@ export const ChatSidebar = ({
   onSelectChat, 
   onDeleteChat, 
   onPresetClick, 
-  onToggleSidebar 
+  onToggleSidebar,
+  refreshFoldersRef
 }: ChatSidebarProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -65,6 +67,11 @@ export const ChatSidebar = ({
     toggleFolderExpanded,
     refresh
   } = useFolders(userId);
+
+  // Expose refresh function to parent via ref
+  if (refreshFoldersRef) {
+    refreshFoldersRef.current = refresh;
+  }
 
   // Merge local conversations with DB data for unfiled
   const mergedUnfiled: ConversationItem[] = userId 
