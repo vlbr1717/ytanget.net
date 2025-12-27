@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { SplashScreen } from "@/components/SplashScreen";
 import { useNavigate } from "react-router-dom";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -58,6 +59,11 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [showSplash, setShowSplash] = useState(true);
+  
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
   const { streamChat, isLoading } = useChatStream();
   const scrollRef = useRef<HTMLDivElement>(null);
   const refreshFoldersRef = useRef<(() => void) | null>(null);
@@ -906,7 +912,9 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <>
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      <div className="flex h-screen bg-background">
       {sidebarVisible && (
         <ChatSidebar
           conversations={conversations}
@@ -1033,6 +1041,7 @@ const Index = () => {
         <ChatInput onSend={handleSendMessage} disabled={isLoading} />
       </div>
     </div>
+    </>
   );
 };
 
