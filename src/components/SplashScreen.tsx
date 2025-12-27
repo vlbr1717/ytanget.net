@@ -51,11 +51,11 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       >
         <motion.div
           className="absolute inset-0 flex items-center justify-center"
-          initial={{ scale: 3 }}
+          initial={{ scale: 5 }}
           animate={{ scale: 1 }}
           transition={{ 
-            duration: 1.5, 
-            ease: [0.25, 0.46, 0.45, 0.94]
+            duration: 2, 
+            ease: [0.7, 0, 0.84, 0]
           }}
         >
           <img
