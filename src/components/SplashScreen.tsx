@@ -61,7 +61,7 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           <img
             src={splashBg}
             alt="YTangent"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-bottom"
           />
         </motion.div>
       </motion.div>
