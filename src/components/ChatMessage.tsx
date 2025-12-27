@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { User, Bot } from "lucide-react";
+import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -264,16 +264,11 @@ export const ChatMessage = ({
       isUser ? "bg-chat-user" : "bg-chat-assistant"
     )}>
       <div className="max-w-3xl mx-auto flex gap-4">
-        <div className={cn(
-          "w-8 h-8 rounded-sm flex items-center justify-center flex-shrink-0",
-          isUser ? "bg-primary" : "bg-accent"
-        )}>
-          {isUser ? (
+        {isUser && (
+          <div className="w-8 h-8 rounded-sm flex items-center justify-center flex-shrink-0 bg-primary">
             <User className="h-5 w-5 text-primary-foreground" />
-          ) : (
-            <Bot className="h-5 w-5 text-accent-foreground" />
-          )}
-        </div>
+          </div>
+        )}
         <div className="flex-1 space-y-4 overflow-hidden">
           <div 
             ref={contentRef}
