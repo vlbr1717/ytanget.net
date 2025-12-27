@@ -55,7 +55,7 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           animate={{ scale: 1 }}
           transition={{ 
             duration: 2, 
-            ease: [0.7, 0, 0.84, 0]
+            ease: [0.9, 0, 0.95, 0.05]
           }}
         >
           <img
