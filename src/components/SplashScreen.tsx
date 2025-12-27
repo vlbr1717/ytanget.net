@@ -15,15 +15,15 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       setPhase("hold");
     }, 1500);
 
-    // Phase 2: Hold (5 seconds after zoom)
+    // Phase 2: Hold (2 seconds after zoom)
     const holdTimer = setTimeout(() => {
       setPhase("fade");
-    }, 6500);
+    }, 3500);
 
     // Phase 3: Fade out and complete
     const completeTimer = setTimeout(() => {
       onComplete();
-    }, 7000);
+    }, 4000);
 
     return () => {
       clearTimeout(zoomTimer);
