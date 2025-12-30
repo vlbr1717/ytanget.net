@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { 
@@ -8,7 +8,7 @@ import {
   Pencil, 
   Trash2, 
   FolderPlus,
-  Palette
+  FileUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { FolderNode, ConversationItem } from '@/hooks/useFolders';
 import { ConversationItemComponent } from './ConversationItem';
+import { DocumentList } from './DocumentList';
 import { cn } from '@/lib/utils';
 
 const FOLDER_COLORS = [
@@ -40,6 +41,8 @@ interface FolderItemProps {
   onUpdateColor: (folderId: string, color: string) => void;
   onMoveConversation: (convId: string, folderId: string | null) => void;
   onDeleteConversation: (convId: string) => void;
+  userId: string;
+  onDocumentUpload: (file: File, folderId: string) => Promise<void>;
 }
 
 export function FolderItem({
@@ -54,8 +57,21 @@ export function FolderItem({
   onCreateSubfolder,
   onUpdateColor,
   onMoveConversation,
-  onDeleteConversation
+  onDeleteConversation,
+  userId,
+  onDocumentUpload
 }: FolderItemProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await onDocumentUpload(file, folder.id);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
 
@@ -172,6 +188,10 @@ export function FolderItem({
               <FolderPlus className="h-4 w-4 mr-2" />
               New subfolder
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+              <FileUp className="h-4 w-4 mr-2" />
+              Upload document
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="px-2 py-1.5">
               <p className="text-xs text-muted-foreground mb-2">Color</p>
@@ -202,11 +222,22 @@ export function FolderItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
       </div>
 
       {/* Expanded content */}
       {isExpanded && (
         <div>
+          {/* Documents in this folder */}
+          <DocumentList folderId={folder.id} userId={userId} depth={depth} />
+          
           {/* Child folders */}
           {folder.children.map((child) => (
             <FolderItem
@@ -223,6 +254,8 @@ export function FolderItem({
               onUpdateColor={onUpdateColor}
               onMoveConversation={onMoveConversation}
               onDeleteConversation={onDeleteConversation}
+              userId={userId}
+              onDocumentUpload={onDocumentUpload}
             />
           ))}
 

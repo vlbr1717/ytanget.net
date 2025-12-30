@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FolderTree } from "@/components/FolderTree";
 import { useFolders, FolderNode, ConversationItem } from "@/hooks/useFolders";
+import { useDocuments } from "@/hooks/useDocuments";
 
 interface Conversation {
   id: string;
@@ -67,6 +68,12 @@ export const ChatSidebar = ({
     toggleFolderExpanded,
     refresh
   } = useFolders(userId);
+
+  const { uploadDocument } = useDocuments(userId);
+
+  const handleDocumentUpload = async (file: File, folderId: string) => {
+    await uploadDocument(file, folderId);
+  };
 
   // Expose refresh function to parent via ref
   if (refreshFoldersRef) {
@@ -189,6 +196,8 @@ export const ChatSidebar = ({
           onMoveConversation={handleMoveConversation}
           onMoveFolder={moveFolder}
           onDeleteConversation={(id) => handleDeleteClick(id, 'conversation')}
+          userId={userId}
+          onDocumentUpload={handleDocumentUpload}
         />
       ) : (
         <ScrollArea className="flex-1">

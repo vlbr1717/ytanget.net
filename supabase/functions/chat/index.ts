@@ -11,13 +11,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Get embedding for search query
+async function getQueryEmbedding(query: string): Promise<number[]> {
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'text-embedding-3-small',
+      input: query,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('Embedding API error:', await response.text());
+    throw new Error(`Failed to get embedding: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding;
+}
+
+// Search for relevant document chunks in a folder
+async function searchDocuments(
+  supabase: any, 
+  folderId: string, 
+  query: string,
+  userId: string
+): Promise<{ documentName: string; content: string }[]> {
+  try {
+    const queryEmbedding = await getQueryEmbedding(query);
+    
+    const { data: results, error } = await supabase.rpc('search_document_chunks', {
+      query_embedding: `[${queryEmbedding.join(',')}]`,
+      folder_id_param: folderId,
+      match_count: 5,
+      match_threshold: 0.5,
+    });
+
+    if (error) {
+      console.error('Document search error:', error);
+      return [];
+    }
+
+    return results?.map((r: any) => ({
+      documentName: r.document_name,
+      content: r.content
+    })) || [];
+  } catch (error) {
+    console.error('Failed to search documents:', error);
+    return [];
+  }
+}
+
 // Input validation constants
 const MAX_MESSAGE_LENGTH = 10000;
 const MAX_MESSAGES = 50;
 
-// yTangent system prompt with branch awareness
-const getSystemPrompt = (depth: number, branchName?: string) => {
+// yTangent system prompt with branch awareness and document context
+const getSystemPrompt = (depth: number, branchName?: string, documentContext?: string) => {
   let branchInfo = `Current depth: ${depth} messages from root.`;
+  if (branchName) {
+    branchInfo += ` Active tangent: '${branchName}'`;
+  }
+
+  let documentSection = '';
+  if (documentContext) {
+    documentSection = `
+
+## Document Context
+The following content is from documents in the user's folder. Use this information to answer questions when relevant:
+
+${documentContext}`;
+  }
   if (branchName) {
     branchInfo += ` Active tangent: '${branchName}'`;
   }
@@ -50,10 +122,12 @@ ${branchInfo}
 - Put formulas on their own line with blank lines before and after
 - Use proper markdown for structure
 
+
 ## Operational Constraints
 - Do not repeat information that exists in the parent branch unless necessary for the current task.
 - If the user provides a URL or file in a parent branch, assume that knowledge persists across all child branches.
-- Prioritize compute efficiency by focusing only on the active branch's specific requirements.`;
+- Prioritize compute efficiency by focusing only on the active branch's specific requirements.
+- When using document context, cite the document name when referencing specific information.${documentSection}`;
 };
 
 // Node type for tree traversal
@@ -107,11 +181,13 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, nodeId, userMessage } = await req.json();
+    const { messages, nodeId, userMessage, conversationId } = await req.json();
     
     let contextMessages: { role: string; content: string }[] = [];
     let depth = 1;
     let branchName: string | undefined;
+    let documentContext: string | undefined;
+    let folderId: string | null = null;
     
     // PATH-BASED CONTEXT MODE: If nodeId is provided, only send path from root to current node
     // This is where we save 60-70% compute - siblings/other branches are NOT included
@@ -132,6 +208,32 @@ serve(async (req) => {
       }
       
       console.log(`Path-based context: ${path.length} nodes, depth ${depth}, branch: ${branchName || 'main'}`);
+
+      // Check if conversation is in a folder for document context
+      if (conversationId) {
+        const { data: conv } = await supabase
+          .from('conversations')
+          .select('folder_id, user_id')
+          .eq('id', conversationId)
+          .maybeSingle();
+        
+        if (conv?.folder_id && conv.user_id) {
+          const folderIdStr = conv.folder_id as string;
+          console.log('Conversation in folder:', folderIdStr);
+          
+          // Get the latest user message for searching
+          const searchQuery = userMessage || path[path.length - 1]?.user_message;
+          if (searchQuery) {
+            const docResults = await searchDocuments(supabase, folderIdStr, searchQuery, conv.user_id);
+            if (docResults.length > 0) {
+              documentContext = docResults
+                .map(d => `**From "${d.documentName}":**\n${d.content}`)
+                .join('\n\n---\n\n');
+              console.log(`Found ${docResults.length} relevant document chunks`);
+            }
+          }
+        }
+      }
     } else if (messages) {
       // FALLBACK: Traditional messages array (backward compatibility)
       console.log('Using traditional messages array');
@@ -191,7 +293,7 @@ serve(async (req) => {
 
     // Build the full message array with yTangent system prompt
     const fullMessages = [
-      { role: 'system', content: getSystemPrompt(depth, branchName) },
+      { role: 'system', content: getSystemPrompt(depth, branchName, documentContext) },
       ...contextMessages
     ];
 
