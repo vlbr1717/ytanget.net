@@ -4,21 +4,18 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Folder,
   ChevronRight,
-  MoreHorizontal,
+  Plus,
   Pencil,
   Trash2,
   FolderPlus,
   FileUp,
-  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { FolderNode, ConversationItem } from '@/hooks/useFolders';
 import { ConversationItemComponent } from './ConversationItem';
 import { DocumentList } from './DocumentList';
@@ -69,6 +66,9 @@ export function FolderItem({
   onDocumentUpload
 }: FolderItemProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(folder.name);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,14 +79,11 @@ export function FolderItem({
       }
     }
   };
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(folder.name);
 
   const {
     attributes,
     listeners,
     setNodeRef,
-    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -114,7 +111,7 @@ export function FolderItem({
   const totalItems = folder.conversations.length + folder.children.length;
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
         className={cn(
           "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
@@ -130,35 +127,13 @@ export function FolderItem({
           if (e.key === 'Enter' || e.key === ' ') onToggleExpanded(folder.id);
         }}
       >
-        {/* Drag handle */}
-        <button
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-sidebar-accent text-muted-foreground"
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Drag folder"
-          title="Drag to reorder"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-
         {/* Expand/Collapse */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleExpanded(folder.id);
-          }}
-          className="p-0.5 hover:bg-muted rounded"
-          aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
-        >
-          <ChevronRight
-            className={cn(
-              "h-4 w-4 transition-transform text-muted-foreground",
-              isExpanded && "rotate-90"
-            )}
-          />
-        </button>
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 transition-transform text-muted-foreground flex-shrink-0",
+            isExpanded && "rotate-90"
+          )}
+        />
 
         {/* Folder Icon */}
         <Folder
@@ -193,24 +168,9 @@ export function FolderItem({
           </span>
         )}
 
-        {/* Upload document button (always visible) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={(e) => {
-            e.stopPropagation();
-            fileInputRef.current?.click();
-          }}
-          aria-label="Upload document"
-          title="Upload PDF or Word document"
-        >
-          <FileUp className="h-4 w-4" />
-        </Button>
-
-        {/* More options */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Plus button with popover menu */}
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
@@ -218,48 +178,79 @@ export function FolderItem({
               onClick={(e) => e.stopPropagation()}
               aria-label="Folder actions"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
-            <DropdownMenuItem onClick={() => setIsEditing(true)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onCreateSubfolder(folder.id)}>
-              <FolderPlus className="h-4 w-4 mr-2" />
-              New subfolder
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1.5">
-              <p className="text-xs text-muted-foreground mb-2">Color</p>
-              <div className="flex gap-1 flex-wrap">
-                {FOLDER_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    className={cn(
-                      "w-5 h-5 rounded-full border-2 transition-transform hover:scale-110",
-                      folder.color === color ? "border-foreground" : "border-transparent"
-                    )}
-                    style={{ backgroundColor: color }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUpdateColor(folder.id, color);
-                    }}
-                  />
-                ))}
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-48 p-2 bg-popover z-50" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col gap-1">
+              <button
+                className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-sidebar-accent w-full text-left"
+                onClick={() => {
+                  setIsEditing(true);
+                  setPopoverOpen(false);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Rename
+              </button>
+              <button
+                className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-sidebar-accent w-full text-left"
+                onClick={() => {
+                  onCreateSubfolder(folder.id);
+                  setPopoverOpen(false);
+                }}
+              >
+                <FolderPlus className="h-4 w-4" />
+                New subfolder
+              </button>
+              <button
+                className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-sidebar-accent w-full text-left"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setPopoverOpen(false);
+                }}
+              >
+                <FileUp className="h-4 w-4" />
+                Upload document
+              </button>
+              
+              <div className="border-t my-1" />
+              
+              <div className="px-2 py-1.5">
+                <p className="text-xs text-muted-foreground mb-2">Color</p>
+                <div className="flex gap-1 flex-wrap">
+                  {FOLDER_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      className={cn(
+                        "w-5 h-5 rounded-full border-2 transition-transform hover:scale-110",
+                        folder.color === color ? "border-foreground" : "border-transparent"
+                      )}
+                      style={{ backgroundColor: color }}
+                      onClick={() => {
+                        onUpdateColor(folder.id, color);
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
+              
+              <div className="border-t my-1" />
+              
+              <button
+                className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-destructive/10 w-full text-left text-destructive"
+                onClick={() => {
+                  onDelete(folder.id);
+                  setPopoverOpen(false);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete folder
+              </button>
             </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => onDelete(folder.id)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete folder
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </PopoverContent>
+        </Popover>
+        
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
