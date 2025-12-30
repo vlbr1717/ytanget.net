@@ -1,14 +1,15 @@
 import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { 
-  Folder, 
-  ChevronRight, 
-  MoreHorizontal, 
-  Pencil, 
-  Trash2, 
+import {
+  Folder,
+  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
   FolderPlus,
-  FileUp
+  FileUp,
+  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,8 +25,14 @@ import { DocumentList } from './DocumentList';
 import { cn } from '@/lib/utils';
 
 const FOLDER_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', 
-  '#f97316', '#eab308', '#22c55e', '#06b6d4'
+  'hsl(243 94% 68%)',
+  'hsl(258 90% 66%)',
+  'hsl(330 81% 60%)',
+  'hsl(0 84% 60%)',
+  'hsl(20 90% 60%)',
+  'hsl(48 95% 55%)',
+  'hsl(142 71% 45%)',
+  'hsl(190 95% 40%)',
 ];
 
 interface FolderItemProps {
@@ -79,6 +86,7 @@ export function FolderItem({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -108,8 +116,6 @@ export function FolderItem({
   return (
     <div ref={setNodeRef} style={style}>
       <div
-        {...attributes}
-        {...listeners}
         className={cn(
           "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
           "hover:bg-sidebar-accent",
@@ -117,7 +123,26 @@ export function FolderItem({
           isDragging && "opacity-50"
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        onClick={() => onToggleExpanded(folder.id)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onToggleExpanded(folder.id);
+        }}
       >
+        {/* Drag handle */}
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-sidebar-accent text-muted-foreground"
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Drag folder"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
         {/* Expand/Collapse */}
         <button
           onClick={(e) => {
@@ -125,6 +150,7 @@ export function FolderItem({
             onToggleExpanded(folder.id);
           }}
           className="p-0.5 hover:bg-muted rounded"
+          aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
         >
           <ChevronRight
             className={cn(
@@ -167,14 +193,15 @@ export function FolderItem({
           </span>
         )}
 
-        {/* More options */}
+        {/* More options (always visible) */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+              className="h-6 w-6 opacity-100"
               onClick={(e) => e.stopPropagation()}
+              aria-label="Folder actions"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
