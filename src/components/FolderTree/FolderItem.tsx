@@ -193,13 +193,28 @@ export function FolderItem({
           </span>
         )}
 
-        {/* More options (always visible) */}
+        {/* Upload document button (always visible) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={(e) => {
+            e.stopPropagation();
+            fileInputRef.current?.click();
+          }}
+          aria-label="Upload document"
+          title="Upload PDF or Word document"
+        >
+          <FileUp className="h-4 w-4" />
+        </Button>
+
+        {/* More options */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-100"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100"
               onClick={(e) => e.stopPropagation()}
               aria-label="Folder actions"
             >
@@ -214,10 +229,6 @@ export function FolderItem({
             <DropdownMenuItem onClick={() => onCreateSubfolder(folder.id)}>
               <FolderPlus className="h-4 w-4 mr-2" />
               New subfolder
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <FileUp className="h-4 w-4 mr-2" />
-              Upload document
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="px-2 py-1.5">
