@@ -13,7 +13,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Folder as FolderIcon } from 'lucide-react';
+import { Plus, Folder as FolderIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FolderNode, ConversationItem } from '@/hooks/useFolders';
@@ -27,6 +27,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { groupConversationsByDate } from '@/lib/dateGroups';
 
 interface FolderTreeProps {
   folders: FolderNode[];
@@ -140,6 +141,9 @@ export function FolderTree({
     return ids;
   };
 
+  // Group unfiled conversations by date
+  const dateGroups = groupConversationsByDate(unfiledConversations);
+
   return (
     <DndContext
       sensors={sensors}
@@ -160,13 +164,14 @@ export function FolderTree({
           </Button>
         </div>
 
-        {/* Folder Tree */}
+        {/* Unified List: Folders first, then chronological conversations */}
         <ScrollArea className="flex-1">
-          <div className="p-2">
+          <div className="p-2" id="unfiled-drop-zone">
             <SortableContext
               items={getAllIds()}
               strategy={verticalListSortingStrategy}
             >
+              {/* Folders at top */}
               {folders.map((folder) => (
                 <FolderItem
                   key={folder.id}
@@ -184,32 +189,28 @@ export function FolderTree({
                   onDeleteConversation={onDeleteConversation}
                 />
               ))}
+
+              {/* Date-grouped conversations */}
+              {dateGroups.map((group) => (
+                <div key={group.label} className="mt-3 first:mt-0">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {group.label}
+                  </div>
+                  {group.conversations.map((conv) => (
+                    <ConversationItemComponent
+                      key={conv.id}
+                      conversation={conv}
+                      depth={0}
+                      isActive={conv.id === activeConversationId}
+                      onSelect={onSelectConversation}
+                      onDelete={onDeleteConversation}
+                    />
+                  ))}
+                </div>
+              ))}
             </SortableContext>
           </div>
         </ScrollArea>
-
-        {/* Unfiled Section */}
-        <div className="border-t border-sidebar-border">
-          <div
-            id="unfiled-drop-zone"
-            className="px-3 py-2 flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase"
-          >
-            <Inbox className="h-3.5 w-3.5" />
-            Unfiled ({unfiledConversations.length})
-          </div>
-          <div className="pb-2 px-2">
-            {unfiledConversations.map((conv) => (
-              <ConversationItemComponent
-                key={conv.id}
-                conversation={conv}
-                depth={0}
-                isActive={conv.id === activeConversationId}
-                onSelect={onSelectConversation}
-                onDelete={onDeleteConversation}
-              />
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Drag Overlay */}
