@@ -24,22 +24,26 @@ export interface ConversationItem {
   updated_at: string;
 }
 
+// Generate a simple UUID for guest mode
+const generateId = () => crypto.randomUUID();
+
 export function useFolders(userId: string | null) {
   const [folders, setFolders] = useState<FolderNode[]>([]);
+  const [flatFolders, setFlatFolders] = useState<Folder[]>([]);
   const [unfiledConversations, setUnfiledConversations] = useState<ConversationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
 
   // Build tree from flat folder list
   const buildFolderTree = useCallback((
-    flatFolders: Folder[],
+    flatFoldersList: Folder[],
     conversations: ConversationItem[]
   ): FolderNode[] => {
     const folderMap = new Map<string, FolderNode>();
     const roots: FolderNode[] = [];
 
     // Create nodes
-    flatFolders.forEach(f => {
+    flatFoldersList.forEach(f => {
       folderMap.set(f.id, {
         ...f,
         children: [],
@@ -48,7 +52,7 @@ export function useFolders(userId: string | null) {
     });
 
     // Build hierarchy
-    flatFolders.forEach(f => {
+    flatFoldersList.forEach(f => {
       const node = folderMap.get(f.id)!;
       if (f.parent_folder_id && folderMap.has(f.parent_folder_id)) {
         folderMap.get(f.parent_folder_id)!.children.push(node);
@@ -66,6 +70,14 @@ export function useFolders(userId: string | null) {
 
     return roots;
   }, []);
+
+  const rebuildTree = useCallback((newFlatFolders: Folder[], conversations: ConversationItem[]) => {
+    const tree = buildFolderTree(newFlatFolders, conversations);
+    setFolders(tree);
+    setFlatFolders(newFlatFolders);
+    const unfiled = conversations.filter(c => !c.folder_id);
+    setUnfiledConversations(unfiled);
+  }, [buildFolderTree]);
 
   const fetchFoldersAndConversations = useCallback(async () => {
     if (!userId) return;
@@ -95,6 +107,7 @@ export function useFolders(userId: string | null) {
       const tree = buildFolderTree(foldersData || [], allConversations);
 
       setFolders(tree);
+      setFlatFolders(foldersData || []);
       setUnfiledConversations(unfiled);
 
       // Initialize expanded state from stored preferences
@@ -115,8 +128,30 @@ export function useFolders(userId: string | null) {
   }, [fetchFoldersAndConversations]);
 
   const createFolder = async (name: string, parentFolderId: string | null = null, color = '#6366f1') => {
-    if (!userId) return null;
+    // Guest mode: create folder locally only
+    if (!userId) {
+      const now = new Date().toISOString();
+      const newFolder: Folder = {
+        id: generateId(),
+        name,
+        color,
+        parent_folder_id: parentFolderId,
+        sort_order: flatFolders.length,
+        is_expanded: false,
+        created_at: now,
+        updated_at: now
+      };
+      
+      const newFlatFolders = [...flatFolders, newFolder];
+      rebuildTree(newFlatFolders, unfiledConversations);
+      
+      // Auto-expand the new folder
+      setExpandedFolderIds(prev => new Set([...prev, newFolder.id]));
+      
+      return newFolder;
+    }
 
+    // Logged-in mode: persist to database
     try {
       const { data, error } = await supabase
         .from('folders')
@@ -141,6 +176,15 @@ export function useFolders(userId: string | null) {
   };
 
   const renameFolder = async (folderId: string, newName: string) => {
+    // Guest mode
+    if (!userId) {
+      const newFlatFolders = flatFolders.map(f => 
+        f.id === folderId ? { ...f, name: newName } : f
+      );
+      rebuildTree(newFlatFolders, unfiledConversations);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('folders')
@@ -155,6 +199,15 @@ export function useFolders(userId: string | null) {
   };
 
   const updateFolderColor = async (folderId: string, color: string) => {
+    // Guest mode
+    if (!userId) {
+      const newFlatFolders = flatFolders.map(f => 
+        f.id === folderId ? { ...f, color } : f
+      );
+      rebuildTree(newFlatFolders, unfiledConversations);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('folders')
@@ -169,6 +222,21 @@ export function useFolders(userId: string | null) {
   };
 
   const deleteFolder = async (folderId: string, moveContentsToUnfiled = true) => {
+    // Guest mode
+    if (!userId) {
+      // Move conversations to unfiled if needed
+      const newUnfiled = moveContentsToUnfiled 
+        ? [...unfiledConversations, ...getAllConversationsInFolder(folderId)]
+        : unfiledConversations;
+      
+      // Remove folder and its children
+      const idsToRemove = getFolderAndDescendantIds(folderId);
+      const newFlatFolders = flatFolders.filter(f => !idsToRemove.has(f.id));
+      
+      rebuildTree(newFlatFolders, newUnfiled);
+      return;
+    }
+
     try {
       if (moveContentsToUnfiled) {
         // Move conversations to unfiled
@@ -190,7 +258,97 @@ export function useFolders(userId: string | null) {
     }
   };
 
+  // Helper to get all conversations in a folder tree
+  const getAllConversationsInFolder = (folderId: string): ConversationItem[] => {
+    const findNode = (nodes: FolderNode[]): FolderNode | null => {
+      for (const node of nodes) {
+        if (node.id === folderId) return node;
+        const found = findNode(node.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    
+    const node = findNode(folders);
+    if (!node) return [];
+    
+    const collectConversations = (n: FolderNode): ConversationItem[] => {
+      return [...n.conversations, ...n.children.flatMap(collectConversations)];
+    };
+    
+    return collectConversations(node);
+  };
+
+  // Helper to get folder and all descendant IDs
+  const getFolderAndDescendantIds = (folderId: string): Set<string> => {
+    const ids = new Set<string>([folderId]);
+    const findAndCollect = (nodes: FolderNode[]) => {
+      for (const node of nodes) {
+        if (ids.has(node.id) || (node.parent_folder_id && ids.has(node.parent_folder_id))) {
+          ids.add(node.id);
+        }
+        findAndCollect(node.children);
+      }
+    };
+    
+    // Multiple passes to catch all descendants
+    for (let i = 0; i < flatFolders.length; i++) {
+      flatFolders.forEach(f => {
+        if (f.parent_folder_id && ids.has(f.parent_folder_id)) {
+          ids.add(f.id);
+        }
+      });
+    }
+    
+    return ids;
+  };
+
   const moveConversation = async (conversationId: string, folderId: string | null) => {
+    // Guest mode: update local state
+    if (!userId) {
+      // Find the conversation in current state
+      let conversation: ConversationItem | null = null;
+      
+      // Check unfiled first
+      const unfiledIndex = unfiledConversations.findIndex(c => c.id === conversationId);
+      if (unfiledIndex >= 0) {
+        conversation = unfiledConversations[unfiledIndex];
+      }
+      
+      // Check folders
+      if (!conversation) {
+        const findInFolders = (nodes: FolderNode[]): ConversationItem | null => {
+          for (const node of nodes) {
+            const found = node.conversations.find(c => c.id === conversationId);
+            if (found) return found;
+            const inChildren = findInFolders(node.children);
+            if (inChildren) return inChildren;
+          }
+          return null;
+        };
+        conversation = findInFolders(folders);
+      }
+      
+      if (conversation) {
+        // Update folder_id
+        const updatedConv = { ...conversation, folder_id: folderId };
+        
+        // Rebuild all conversations list
+        const allConvs = [...unfiledConversations.filter(c => c.id !== conversationId)];
+        const collectFromFolders = (nodes: FolderNode[]) => {
+          nodes.forEach(n => {
+            allConvs.push(...n.conversations.filter(c => c.id !== conversationId));
+            collectFromFolders(n.children);
+          });
+        };
+        collectFromFolders(folders);
+        allConvs.push(updatedConv);
+        
+        rebuildTree(flatFolders, allConvs);
+      }
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('conversations')
@@ -232,6 +390,15 @@ export function useFolders(userId: string | null) {
       return;
     }
 
+    // Guest mode
+    if (!userId) {
+      const newFlatFolders = flatFolders.map(f => 
+        f.id === folderId ? { ...f, parent_folder_id: newParentId } : f
+      );
+      rebuildTree(newFlatFolders, unfiledConversations);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('folders')
@@ -256,6 +423,9 @@ export function useFolders(userId: string | null) {
     }
     
     setExpandedFolderIds(newExpanded);
+
+    // Guest mode: don't persist
+    if (!userId) return;
 
     // Persist to database
     try {
