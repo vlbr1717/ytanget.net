@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MessageSquare, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, MessageSquare, MoreVertical, Trash2, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -170,14 +170,27 @@ export const ChatSidebar = ({
           ))}
         </div>
         
-        <Button 
-          onClick={onNewChat}
-          className="w-full justify-start gap-2"
-          variant="outline-hover"
-        >
-          <Plus className="h-4 w-4" />
-          New chat
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={onNewChat}
+            className="flex-1 justify-start gap-2"
+            variant="outline-hover"
+          >
+            <Plus className="h-4 w-4" />
+            New chat
+          </Button>
+          {userId && (
+            <Button
+              onClick={() => createFolder('New Folder', null)}
+              variant="outline-hover"
+              size="icon"
+              className="h-9 w-9 flex-shrink-0"
+              title="New folder"
+            >
+              <FolderPlus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
       
       {/* Folder Tree for logged-in users, simple list for guests */}

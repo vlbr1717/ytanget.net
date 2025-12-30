@@ -156,17 +156,6 @@ export function FolderTree({
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col h-full">
-        {/* New Folder Button */}
-        <div className="p-2 border-b border-sidebar-border">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-sm"
-            onClick={() => openNewFolderDialog(null)}
-          >
-            <Plus className="h-4 w-4" />
-            New Folder
-          </Button>
-        </div>
 
         {/* Unified List: Folders first, then chronological conversations */}
         <ScrollArea className="flex-1">
