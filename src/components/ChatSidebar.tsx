@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MessageSquare, MoreVertical, Trash2, FolderPlus } from "lucide-react";
+import { Plus, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -179,78 +172,36 @@ export const ChatSidebar = ({
             <Plus className="h-4 w-4" />
             New chat
           </Button>
-          {userId && (
-            <Button
-              onClick={() => createFolder('New Folder', null)}
-              variant="outline-hover"
-              size="icon"
-              className="h-9 w-9 flex-shrink-0"
-              title="New folder"
-            >
-              <FolderPlus className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            onClick={() => createFolder('New Folder', null)}
+            variant="outline-hover"
+            size="icon"
+            className="h-9 w-9 flex-shrink-0"
+            title="New folder"
+          >
+            <FolderPlus className="h-4 w-4" />
+          </Button>
         </div>
       </div>
       
-      {/* Folder Tree for logged-in users, simple list for guests */}
-      {userId ? (
-        <FolderTree
-          folders={folders}
-          unfiledConversations={mergedUnfiled}
-          activeConversationId={activeId}
-          expandedFolderIds={expandedFolderIds}
-          onSelectConversation={onSelectChat}
-          onCreateFolder={handleCreateFolder}
-          onRenameFolder={renameFolder}
-          onDeleteFolder={(id) => handleDeleteClick(id, 'folder')}
-          onUpdateFolderColor={updateFolderColor}
-          onToggleFolderExpanded={toggleFolderExpanded}
-          onMoveConversation={handleMoveConversation}
-          onMoveFolder={moveFolder}
-          onDeleteConversation={(id) => handleDeleteClick(id, 'conversation')}
-          userId={userId}
-          onDocumentUpload={handleDocumentUpload}
-        />
-      ) : (
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {conversations.map((conv) => (
-              <div key={conv.id} className="group relative flex items-center gap-1">
-                <Button
-                  onClick={() => onSelectChat(conv.id)}
-                  variant={activeId === conv.id ? "secondary" : "ghost"}
-                  className="flex-1 justify-start gap-2 text-left"
-                >
-                  <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{conv.title}</span>
-                </Button>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover z-50">
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => handleDeleteClick(conv.id, 'conversation')}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
+      {/* Folder Tree for all users - data persists only for logged-in users */}
+      <FolderTree
+        folders={folders}
+        unfiledConversations={mergedUnfiled}
+        activeConversationId={activeId}
+        expandedFolderIds={expandedFolderIds}
+        onSelectConversation={onSelectChat}
+        onCreateFolder={handleCreateFolder}
+        onRenameFolder={renameFolder}
+        onDeleteFolder={(id) => handleDeleteClick(id, 'folder')}
+        onUpdateFolderColor={updateFolderColor}
+        onToggleFolderExpanded={toggleFolderExpanded}
+        onMoveConversation={handleMoveConversation}
+        onMoveFolder={moveFolder}
+        onDeleteConversation={(id) => handleDeleteClick(id, 'conversation')}
+        userId={userId}
+        onDocumentUpload={handleDocumentUpload}
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
