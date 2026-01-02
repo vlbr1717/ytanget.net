@@ -188,15 +188,20 @@ serve(async (req) => {
       );
     }
 
+    // Sanitize text: remove null characters and other problematic unicode
+    const sanitizedText = extractedText
+      .replace(/\u0000/g, '') // Remove null characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ''); // Remove other control chars
+    
     // Chunk the text
-    const chunks = chunkText(extractedText);
+    const chunks = chunkText(sanitizedText);
     console.log(`Created ${chunks.length} chunks`);
 
     // Store chunks WITHOUT embeddings (we'll use keyword search instead)
     const chunkInserts = chunks.map((content, index) => ({
       document_id: documentId,
       chunk_index: index,
-      content,
+      content: content.replace(/\u0000/g, ''), // Extra safety
       embedding: null, // No embeddings - will use text search
     }));
 
