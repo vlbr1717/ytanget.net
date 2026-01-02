@@ -255,7 +255,7 @@ export function useBranchingChat(conversationId: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, conversationId]);
 
   // Send a message and stream the response
   const sendMessage = useCallback(async (userMessage: string) => {
