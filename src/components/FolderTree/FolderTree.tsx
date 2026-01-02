@@ -45,6 +45,7 @@ interface FolderTreeProps {
   onDeleteConversation: (id: string) => void;
   userId: string;
   onDocumentUpload: (file: File, folderId: string) => Promise<void>;
+  onCreateChatInFolder?: (folderId: string) => void;
 }
 
 export function FolderTree({
@@ -62,7 +63,8 @@ export function FolderTree({
   onMoveFolder,
   onDeleteConversation,
   userId,
-  onDocumentUpload
+  onDocumentUpload,
+  onCreateChatInFolder
 }: FolderTreeProps) {
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -182,6 +184,7 @@ export function FolderTree({
                   onDeleteConversation={onDeleteConversation}
                   userId={userId}
                   onDocumentUpload={onDocumentUpload}
+                  onCreateChatInFolder={onCreateChatInFolder}
                 />
               ))}
 

@@ -31,6 +31,7 @@ interface ChatSidebarProps {
   onPresetClick: (presetId: string) => void;
   onToggleSidebar?: () => void;
   refreshFoldersRef?: React.MutableRefObject<(() => void) | null>;
+  onCreateChatInFolder?: (folderId: string) => void;
 }
 
 export const ChatSidebar = ({ 
@@ -42,7 +43,8 @@ export const ChatSidebar = ({
   onDeleteChat, 
   onPresetClick, 
   onToggleSidebar,
-  refreshFoldersRef
+  refreshFoldersRef,
+  onCreateChatInFolder
 }: ChatSidebarProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -201,6 +203,7 @@ export const ChatSidebar = ({
         onDeleteConversation={(id) => handleDeleteClick(id, 'conversation')}
         userId={userId}
         onDocumentUpload={handleDocumentUpload}
+        onCreateChatInFolder={onCreateChatInFolder}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
