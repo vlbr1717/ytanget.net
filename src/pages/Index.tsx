@@ -353,6 +353,36 @@ const Index = () => {
     }
   };
 
+  const handleCreateChatInFolder = async (folderId: string) => {
+    const newId = crypto.randomUUID();
+    const newConv = { id: newId, title: "New Chat", messages: [] };
+    
+    setConversations(prev => [...prev, newConv]);
+    setActiveConvId(newId);
+    
+    // Save to database and move to folder if user is logged in
+    if (user) {
+      try {
+        // First create the conversation
+        const { error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            id: newId,
+            user_id: user.id,
+            title: "New Chat",
+            folder_id: folderId,
+            updated_at: new Date().toISOString()
+          });
+        if (convError) throw convError;
+        
+        // Refresh the folder tree to show the new conversation
+        refreshFoldersRef.current?.();
+      } catch (error) {
+        console.error("Error creating conversation in folder:", error);
+      }
+    }
+  };
+
   const handleDeleteChat = async (id: string) => {
     // Delete from database if user is logged in
     if (user) {
@@ -926,6 +956,7 @@ const Index = () => {
           onPresetClick={handlePresetClick}
           onToggleSidebar={() => setSidebarVisible(false)}
           refreshFoldersRef={refreshFoldersRef}
+          onCreateChatInFolder={handleCreateChatInFolder}
         />
       )}
       

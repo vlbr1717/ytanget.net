@@ -9,6 +9,7 @@ import {
   Trash2,
   FolderPlus,
   FileUp,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,6 +48,7 @@ interface FolderItemProps {
   onDeleteConversation: (convId: string) => void;
   userId: string;
   onDocumentUpload: (file: File, folderId: string) => Promise<void>;
+  onCreateChatInFolder?: (folderId: string) => void;
 }
 
 export function FolderItem({
@@ -63,7 +65,8 @@ export function FolderItem({
   onMoveConversation,
   onDeleteConversation,
   userId,
-  onDocumentUpload
+  onDocumentUpload,
+  onCreateChatInFolder
 }: FolderItemProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -285,6 +288,7 @@ export function FolderItem({
               onDeleteConversation={onDeleteConversation}
               userId={userId}
               onDocumentUpload={onDocumentUpload}
+              onCreateChatInFolder={onCreateChatInFolder}
             />
           ))}
 
@@ -300,6 +304,49 @@ export function FolderItem({
               onMoveToUnfiled={() => onMoveConversation(conv.id, null)}
             />
           ))}
+
+          {/* Action buttons at bottom of folder */}
+          <div 
+            className="flex items-center gap-1 py-1.5 px-2"
+            style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateChatInFolder?.(folder.id);
+              }}
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5 mr-1" />
+              Chat
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateSubfolder(folder.id);
+              }}
+            >
+              <FolderPlus className="h-3.5 w-3.5 mr-1" />
+              Folder
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+            >
+              <FileUp className="h-3.5 w-3.5 mr-1" />
+              File
+            </Button>
+          </div>
         </div>
       )}
     </div>
