@@ -11,7 +11,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Search for relevant document chunks using keyword matching
+// Search for relevant document chunks using keyword matching AND document name detection
 async function searchDocuments(
   supabase: any, 
   folderId: string, 
@@ -34,30 +34,48 @@ async function searchDocuments(
 
     console.log(`Found ${docs.length} documents in folder`);
 
-    // Get chunks from these documents
-    const docIds = docs.map((d: any) => d.id);
-    const { data: chunks, error: chunksError } = await supabase
-      .from('document_chunks')
-      .select('content, document_id')
-      .in('document_id', docIds)
-      .limit(50);
-
-    if (chunksError || !chunks) {
-      console.error('Error fetching chunks:', chunksError);
-      return [];
-    }
-
     // Create a map of doc id to name
     const docNameMap: Record<string, string> = {};
     for (const doc of docs) {
       docNameMap[doc.id] = doc.name;
     }
 
+    // Check if query mentions any document by name (case-insensitive)
+    const queryLower = query.toLowerCase();
+    const mentionedDocIds: string[] = [];
+    for (const doc of docs) {
+      const docNameLower = doc.name.toLowerCase().replace(/\.[^/.]+$/, ''); // Remove extension
+      if (queryLower.includes(docNameLower)) {
+        mentionedDocIds.push(doc.id);
+        console.log(`Query mentions document: ${doc.name}`);
+      }
+    }
+
+    // Get chunks - prioritize mentioned documents, then keyword relevance
+    const docIds = docs.map((d: any) => d.id);
+    const { data: chunks, error: chunksError } = await supabase
+      .from('document_chunks')
+      .select('content, document_id')
+      .in('document_id', docIds)
+      .limit(100);
+
+    if (chunksError || !chunks) {
+      console.error('Error fetching chunks:', chunksError);
+      return [];
+    }
+
     // Simple keyword relevance scoring
-    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
     const scoredChunks = chunks.map((chunk: any) => {
       const contentLower = chunk.content.toLowerCase();
       let score = 0;
+      
+      // If this chunk is from a mentioned document, give it high priority
+      if (mentionedDocIds.includes(chunk.document_id)) {
+        score += 100;
+      }
+      
+      // Also add keyword matching score
       for (const word of queryWords) {
         if (contentLower.includes(word)) {
           score += 1;
@@ -66,11 +84,11 @@ async function searchDocuments(
       return { ...chunk, score, documentName: docNameMap[chunk.document_id] };
     });
 
-    // Sort by score and take top 5
+    // Sort by score and take top chunks
     const topChunks = scoredChunks
       .filter((c: any) => c.score > 0)
       .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 5);
+      .slice(0, 10);
 
     console.log(`Returning ${topChunks.length} relevant chunks`);
 
