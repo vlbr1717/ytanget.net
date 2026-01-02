@@ -117,7 +117,7 @@ export function FolderItem({
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
         className={cn(
-          "group flex items-center gap-1 py-1.5 mr-4 rounded-lg cursor-pointer transition-colors overflow-hidden",
+          "group flex items-center gap-1 py-1.5 mr-16 rounded-lg cursor-pointer transition-colors overflow-hidden",
           "hover:bg-sidebar-accent",
           isOver && "bg-primary/10 ring-2 ring-primary/30",
           isDragging && "opacity-50"
