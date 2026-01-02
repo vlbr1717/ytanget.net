@@ -117,12 +117,12 @@ export function FolderItem({
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
         className={cn(
-          "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
+          "group flex items-center gap-1 py-1.5 rounded-lg cursor-pointer transition-colors overflow-hidden",
           "hover:bg-sidebar-accent",
           isOver && "bg-primary/10 ring-2 ring-primary/30",
           isDragging && "opacity-50"
         )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${depth * 12 + 8}px`, paddingRight: '8px' }}
         onClick={() => onToggleExpanded(folder.id)}
         role="button"
         tabIndex={0}
@@ -161,12 +161,12 @@ export function FolderItem({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="flex-1 text-sm truncate">{folder.name}</span>
+          <span className="flex-1 text-sm truncate min-w-0">{folder.name}</span>
         )}
 
         {/* Item count badge */}
         {!isExpanded && totalItems > 0 && (
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
             {totalItems}
           </span>
         )}
@@ -177,7 +177,7 @@ export function FolderItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => e.stopPropagation()}
               aria-label="Folder actions"
             >
