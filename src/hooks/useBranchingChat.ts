@@ -199,6 +199,7 @@ export function useBranchingChat(conversationId: string | null) {
           body: JSON.stringify({
             nodeId,
             userMessage,
+            conversationId, // Include conversationId for document context
           }),
         }
       );
