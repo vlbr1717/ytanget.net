@@ -177,7 +177,7 @@ export function FolderItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+              className="h-6 w-6"
               onClick={(e) => e.stopPropagation()}
               aria-label="Folder actions"
             >
@@ -305,48 +305,6 @@ export function FolderItem({
             />
           ))}
 
-          {/* Action buttons at bottom of folder */}
-          <div 
-            className="flex items-center gap-1 py-1.5 px-2"
-            style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateChatInFolder?.(folder.id);
-              }}
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5 mr-1" />
-              Chat
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateSubfolder(folder.id);
-              }}
-            >
-              <FolderPlus className="h-3.5 w-3.5 mr-1" />
-              Folder
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              <FileUp className="h-3.5 w-3.5 mr-1" />
-              File
-            </Button>
-          </div>
         </div>
       )}
     </div>
