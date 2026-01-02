@@ -11,34 +11,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Get embedding for search query
-async function getQueryEmbedding(query: string): Promise<number[]> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY not configured');
-  }
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-3-small',
-      input: query,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('Embedding API error:', await response.text());
-    throw new Error(`Failed to get embedding: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.data[0].embedding;
-}
-
-// Search for relevant document chunks in a folder
+// Search for relevant document chunks using keyword matching
 async function searchDocuments(
   supabase: any, 
   folderId: string, 
@@ -46,24 +19,65 @@ async function searchDocuments(
   userId: string
 ): Promise<{ documentName: string; content: string }[]> {
   try {
-    const queryEmbedding = await getQueryEmbedding(query);
-    
-    const { data: results, error } = await supabase.rpc('search_document_chunks', {
-      query_embedding: `[${queryEmbedding.join(',')}]`,
-      folder_id_param: folderId,
-      match_count: 5,
-      match_threshold: 0.5,
-    });
+    // Get all documents in this folder
+    const { data: docs, error: docsError } = await supabase
+      .from('documents')
+      .select('id, name')
+      .eq('folder_id', folderId)
+      .eq('user_id', userId)
+      .eq('status', 'ready');
 
-    if (error) {
-      console.error('Document search error:', error);
+    if (docsError || !docs || docs.length === 0) {
+      console.log('No documents found in folder:', folderId);
       return [];
     }
 
-    return results?.map((r: any) => ({
-      documentName: r.document_name,
-      content: r.content
-    })) || [];
+    console.log(`Found ${docs.length} documents in folder`);
+
+    // Get chunks from these documents
+    const docIds = docs.map((d: any) => d.id);
+    const { data: chunks, error: chunksError } = await supabase
+      .from('document_chunks')
+      .select('content, document_id')
+      .in('document_id', docIds)
+      .limit(50);
+
+    if (chunksError || !chunks) {
+      console.error('Error fetching chunks:', chunksError);
+      return [];
+    }
+
+    // Create a map of doc id to name
+    const docNameMap: Record<string, string> = {};
+    for (const doc of docs) {
+      docNameMap[doc.id] = doc.name;
+    }
+
+    // Simple keyword relevance scoring
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const scoredChunks = chunks.map((chunk: any) => {
+      const contentLower = chunk.content.toLowerCase();
+      let score = 0;
+      for (const word of queryWords) {
+        if (contentLower.includes(word)) {
+          score += 1;
+        }
+      }
+      return { ...chunk, score, documentName: docNameMap[chunk.document_id] };
+    });
+
+    // Sort by score and take top 5
+    const topChunks = scoredChunks
+      .filter((c: any) => c.score > 0)
+      .sort((a: any, b: any) => b.score - a.score)
+      .slice(0, 5);
+
+    console.log(`Returning ${topChunks.length} relevant chunks`);
+
+    return topChunks.map((c: any) => ({
+      documentName: c.documentName,
+      content: c.content
+    }));
   } catch (error) {
     console.error('Failed to search documents:', error);
     return [];

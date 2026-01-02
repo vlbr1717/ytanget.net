@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -10,7 +9,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Chunk text into smaller pieces for embedding
+// Chunk text into smaller pieces
 function chunkText(text: string, maxChunkSize = 1000, overlap = 200): string[] {
   const chunks: string[] = [];
   let start = 0;
@@ -40,34 +39,6 @@ function chunkText(text: string, maxChunkSize = 1000, overlap = 200): string[] {
   }
   
   return chunks;
-}
-
-// Get embeddings from Lovable AI gateway
-async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY not configured');
-  }
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-3-small',
-      input: texts,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Embedding API error:', error);
-    throw new Error(`Failed to get embeddings: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.data.map((item: any) => item.embedding);
 }
 
 // Extract text from PDF using simple text extraction
@@ -221,23 +192,12 @@ serve(async (req) => {
     const chunks = chunkText(extractedText);
     console.log(`Created ${chunks.length} chunks`);
 
-    // Get embeddings for all chunks (batch for efficiency)
-    const batchSize = 20;
-    const allEmbeddings: number[][] = [];
-    
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      const batch = chunks.slice(i, i + batchSize);
-      const embeddings = await getEmbeddings(batch);
-      allEmbeddings.push(...embeddings);
-      console.log(`Processed embeddings batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(chunks.length / batchSize)}`);
-    }
-
-    // Store chunks with embeddings
+    // Store chunks WITHOUT embeddings (we'll use keyword search instead)
     const chunkInserts = chunks.map((content, index) => ({
       document_id: documentId,
       chunk_index: index,
       content,
-      embedding: `[${allEmbeddings[index].join(',')}]`,
+      embedding: null, // No embeddings - will use text search
     }));
 
     const { error: chunkError } = await supabase

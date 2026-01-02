@@ -48,7 +48,7 @@ export function ConversationItemComponent({
       {...attributes}
       {...listeners}
       className={cn(
-        "group flex items-center gap-2 py-1.5 mr-2 rounded-lg cursor-pointer transition-colors overflow-hidden",
+        "group flex items-center gap-2 py-1.5 mr-4 rounded-lg cursor-pointer transition-colors overflow-hidden",
         isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50",
         isDragging && "opacity-50"
       )}
