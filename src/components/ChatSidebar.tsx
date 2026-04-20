@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FolderTree } from "@/components/FolderTree";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useFolders, FolderNode, ConversationItem } from "@/hooks/useFolders";
 import { useDocuments } from "@/hooks/useDocuments";
 
@@ -205,6 +206,10 @@ export const ChatSidebar = ({
         onDocumentUpload={handleDocumentUpload}
         onCreateChatInFolder={onCreateChatInFolder}
       />
+
+      <div className="p-3 border-t border-sidebar-border">
+        <ThemeToggle />
+      </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
