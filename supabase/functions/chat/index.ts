@@ -213,7 +213,21 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, nodeId, userMessage, conversationId } = await req.json();
+    const { messages, nodeId, userMessage, conversationId, model } = await req.json();
+
+    const ALLOWED_MODELS = new Set([
+      'openai/gpt-5',
+      'openai/gpt-5-mini',
+      'openai/gpt-5.2',
+      'google/gemini-2.5-pro',
+      'google/gemini-2.5-flash',
+      'google/gemini-3-flash-preview',
+      'google/gemini-3.1-pro-preview',
+    ]);
+    const selectedModel = (typeof model === 'string' && ALLOWED_MODELS.has(model))
+      ? model
+      : 'openai/gpt-5';
+    console.log('Using model:', selectedModel);
     
     let contextMessages: { role: string; content: string }[] = [];
     let depth = 1;
@@ -338,7 +352,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: selectedModel,
         messages: fullMessages,
         stream: true,
       }),
