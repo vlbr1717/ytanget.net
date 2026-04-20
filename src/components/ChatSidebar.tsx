@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FolderTree } from "@/components/FolderTree";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useFolders, FolderNode, ConversationItem } from "@/hooks/useFolders";
 import { useDocuments } from "@/hooks/useDocuments";
 
