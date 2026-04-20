@@ -207,6 +207,10 @@ export const ChatSidebar = ({
         onCreateChatInFolder={onCreateChatInFolder}
       />
 
+      <div className="p-3 border-t border-sidebar-border">
+        <ThemeToggle />
+      </div>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
