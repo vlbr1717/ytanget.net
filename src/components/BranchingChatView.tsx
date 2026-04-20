@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChatInput } from "@/components/ChatInput";
 import { BranchDropdown } from "@/components/BranchDropdown";
+import { ModelPicker } from "@/components/ModelPicker";
 import { useBranchingChat, Node } from "@/hooks/useBranchingChat";
+import { useChatModel } from "@/hooks/useChatModel";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,7 @@ export function BranchingChatView({ conversationId }: BranchingChatViewProps) {
     switchToBranch,
     getSiblings,
   } = useBranchingChat(conversationId);
+  const { model, setModel } = useChatModel();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [forkDialog, setForkDialog] = useState<{ open: boolean; nodeId: string | null }>({
@@ -77,6 +80,11 @@ export function BranchingChatView({ conversationId }: BranchingChatViewProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Top bar with model picker */}
+      <div className="px-4 py-2 border-b flex items-center justify-end">
+        <ModelPicker value={model} onChange={setModel} />
+      </div>
+
       {/* Breadcrumb */}
       {activePath.length > 0 && (
         <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto">
