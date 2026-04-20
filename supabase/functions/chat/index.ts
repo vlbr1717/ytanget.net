@@ -345,17 +345,25 @@ serve(async (req) => {
 
     console.log('Calling Lovable AI with', fullMessages.length, 'total messages');
 
+    // GPT-5 family supports a "reasoning" option. Use low effort by default to keep
+    // streaming latency down so the connection doesn't time out.
+    const isGpt5 = selectedModel.startsWith('openai/gpt-5');
+    const requestBody: Record<string, unknown> = {
+      model: selectedModel,
+      messages: fullMessages,
+      stream: true,
+    };
+    if (isGpt5) {
+      requestBody.reasoning = { effort: 'low' };
+    }
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: fullMessages,
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
