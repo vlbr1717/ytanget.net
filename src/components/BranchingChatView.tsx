@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GitFork, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -156,33 +157,47 @@ export function BranchingChatView({ conversationId }: BranchingChatViewProps) {
               {/* Assistant response */}
               {node.assistant_response && (
                 <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-muted rounded-2xl rounded-tl-sm px-4 py-2">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={{
-                        code({ className, children, ...props }) {
-                          const match = /language-(\w+)/.exec(className || "");
-                          const isInline = !match;
-                          return !isInline && match ? (
-                            <SyntaxHighlighter
-                              style={oneDark as any}
-                              language={match[1]}
-                              PreTag="div"
-                              className="rounded-md my-2"
-                            >
-                              {String(children).replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className="bg-muted-foreground/20 px-1 py-0.5 rounded text-sm" {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {node.assistant_response}
-                    </ReactMarkdown>
+                  <div className="max-w-[80%] bg-muted rounded-2xl rounded-tl-sm px-5 py-3">
+                    <div className="prose prose-sm dark:prose-invert max-w-none
+                      prose-headings:font-semibold prose-headings:text-foreground
+                      prose-h1:text-xl prose-h1:mt-4 prose-h1:mb-2
+                      prose-h2:text-lg prose-h2:mt-4 prose-h2:mb-2
+                      prose-h3:text-base prose-h3:mt-3 prose-h3:mb-1.5
+                      prose-p:my-2 prose-p:leading-relaxed
+                      prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
+                      prose-strong:text-foreground prose-strong:font-semibold
+                      prose-a:text-primary hover:prose-a:underline
+                      prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-blockquote:not-italic
+                      prose-hr:my-4 prose-hr:border-border
+                      prose-table:text-sm prose-th:text-foreground prose-th:font-semibold
+                      prose-code:before:content-none prose-code:after:content-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath, remarkGfm]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={{
+                          code({ className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || "");
+                            const isInline = !match;
+                            return !isInline && match ? (
+                              <SyntaxHighlighter
+                                style={oneDark as any}
+                                language={match[1]}
+                                PreTag="div"
+                                className="rounded-md my-2"
+                              >
+                                {String(children).replace(/\n$/, "")}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className="bg-muted-foreground/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
+                      >
+                        {node.assistant_response}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               )}
